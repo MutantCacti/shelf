@@ -4,10 +4,15 @@
 import sys
 import getpass
 
-from passlib.hash import bcrypt
+import bcrypt
 
 from db import init_db, SessionLocal
 from models import Auth
+
+
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt."""
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def main():
@@ -22,7 +27,7 @@ def main():
             print("Passwords don't match")
             sys.exit(1)
 
-    password_hash = bcrypt.hash(password)
+    password_hash = hash_password(password)
 
     session = SessionLocal()
     try:

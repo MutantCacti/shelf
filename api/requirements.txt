@@ -1,5 +1,6 @@
 litestar[standard]
 sqlalchemy>=2.0
-passlib[bcrypt]
+pydantic>=2.0
+bcrypt
 python-multipart
 uvicorn

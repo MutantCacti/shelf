@@ -23,6 +23,15 @@ class Auth(Base):
     )
 
 
+class UserSession(Base):
+    """Server-side session storage."""
+    __tablename__ = "sessions"
+
+    token_hash: Mapped[str] = mapped_column(String(255), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
 class ApiKey(Base):
     """API keys for MCP/programmatic access."""
     __tablename__ = "api_keys"

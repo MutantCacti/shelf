@@ -1,0 +1,1 @@
+Allow renaming of uploaded files by right-clicking or F2

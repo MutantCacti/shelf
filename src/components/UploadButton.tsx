@@ -24,7 +24,7 @@ export default function UploadButton() {
             />
             <button
                 onClick={() => inputRef.current?.click()}
-                className="pl-1 text-text-muted hover:text-accent focus-visible:text-accent hover-glow transition-all rounded-lg cursor-pointer hover:-translate-y-0.5 focus-visible:-translate-y-0.5"
+                className="pl-1 text-text-muted hover:text-accent focus-visible:text-accent hover-glow transition-all rounded-full cursor-pointer hover:-translate-y-0.5 focus-visible:-translate-y-0.5"
                 title="Upload files"
             >
                 <LuUpload size={20} />

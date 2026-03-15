@@ -41,7 +41,7 @@ interface TransferItemProps {
 }
 
 export default function TransferItem({ transfer, size = 100 }: TransferItemProps) {
-    const { selected, toggleSelect, download, localThumbs } = useTransferStore()
+    const { selected, toggleSelect, download } = useTransferStore()
     const [copied, setCopied] = useState(false)
     const [thumbLoaded, setThumbLoaded] = useState(false)
     const isSelected = selected.includes(transfer.id)
@@ -83,17 +83,18 @@ export default function TransferItem({ transfer, size = 100 }: TransferItemProps
     }
 
     return (
-        <div className={`glow-wrap${isSelected ? ' active' : ''}`} data-transfer-id={transfer.id}>
+        <div className={`glow-wrap${isSelected ? ' active' : ''}`} data-transfer-id={transfer.id}
+             style={{ borderRadius: (transfer.type === 'text' || isImage(transfer)) ? '10px' : '9999px' }}>
             {isImage(transfer) ? (
                 <button
                     onClick={handleClick}
                     onDoubleClick={handleDoubleClick}
-                    className="relative block overflow-hidden
+                    className="group relative block overflow-hidden
                                 transition-colors cursor-pointer select-none"
                     style={{ width: dim, height: dim, borderRadius: '10px', willChange: 'transform' }}
                 >
                     <img
-                        src={localThumbs[transfer.id] ?? (transfer.id > 0 ? `/api/transfers/${transfer.id}/thumbnail?v=${transfer.created_at}` : undefined)}
+                        src={`/api/transfers/${transfer.id}/thumbnail?v=${transfer.created_at}`}
                         alt={transfer.content}
                         loading="lazy"
                         draggable={false}
@@ -101,6 +102,7 @@ export default function TransferItem({ transfer, size = 100 }: TransferItemProps
                     />
                     <div className="absolute pointer-events-none"
                          style={{ inset: '-1px', borderRadius: '11px', boxShadow: 'inset 0 -40px 30px -10px var(--color-bg)' }} />
+                    <LuImage size={14} className="absolute top-2 right-2 text-text opacity-30 group-hover:opacity-70 transition-opacity" />
                     <span className="absolute bottom-0 inset-x-0 text-xs text-text truncate
                                      text-center px-1 py-1">
                         {getLabel(transfer)}
@@ -110,7 +112,7 @@ export default function TransferItem({ transfer, size = 100 }: TransferItemProps
                 <button
                     onClick={handleClick}
                     onDoubleClick={handleDoubleClick}
-                    className={`group relative flex rounded-lg overflow-hidden
+                    className={`group relative flex ${transfer.type === 'text' ? 'rounded-lg' : 'rounded-full'} overflow-hidden
                                 transition-colors cursor-pointer select-none bg-surface
                                 ${transfer.type === 'text' ? 'items-start' : 'items-center justify-center'}`}
                     style={{ width: dim, height: dim }}
@@ -129,7 +131,7 @@ export default function TransferItem({ transfer, size = 100 }: TransferItemProps
                                 >
                                     {transfer.content}
                                 </span>
-                                <LuClipboard size={14} className="absolute top-2 right-2 text-text-muted opacity-0 group-hover:opacity-40 transition-opacity" />
+                                <LuClipboard size={14} className="absolute top-2 right-2 text-text-muted opacity-30 group-hover:opacity-70 transition-opacity" />
                             </>
                         )
                     ) : (

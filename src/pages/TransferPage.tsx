@@ -4,7 +4,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import useTransferStore from '../stores/TransferStore'
 import ToastContainer from '../components/Toast'
 
-export default function TransferPage() {
+export default function TransferPage({ onHelp }: { onHelp: () => void }) {
     const { remove, batchRemove, clearSelection } = useTransferStore()
     const [showConfirm, setShowConfirm] = useState(false)
 
@@ -54,7 +54,7 @@ export default function TransferPage() {
             clearSelection()
             return
         }
-        if (e.key === 'Delete' && !(e.target instanceof HTMLInputElement)) {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && !(e.target instanceof HTMLInputElement)) {
             const { selected } = useTransferStore.getState()
             if (selected.length > 0) {
                 setDeleteTargets(selected)
@@ -62,19 +62,15 @@ export default function TransferPage() {
             }
             return
         }
-        if (e.key === 'Enter') {
-            const inputEmpty = !(e.target instanceof HTMLInputElement) || !(e.target as HTMLInputElement).value
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault()
             const { selected, batchDownload } = useTransferStore.getState()
-            if (inputEmpty && selected.length > 0) {
-                e.preventDefault()
+            if (selected.length > 0) {
                 batchDownload(selected)
-                return
-            }
-            if (!(e.target instanceof HTMLInputElement)) {
-                e.preventDefault()
+            } else {
                 document.getElementById('upload-input')?.click()
-                return
             }
+            return
         }
         if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
             if (e.target instanceof HTMLInputElement && (e.target as HTMLInputElement).value) return
@@ -109,7 +105,7 @@ export default function TransferPage() {
 
     return (
         <div className="relative flex flex-col h-screen">
-            <TransferGrid />
+            <TransferGrid onHelp={onHelp} />
             <ToastContainer />
             {showConfirm && (
                 <ConfirmModal

@@ -48,7 +48,7 @@ function rectsIntersect(
     return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by
 }
 
-export default function TransferGrid() {
+export default function TransferGrid({ onHelp }: { onHelp: () => void }) {
     const { transfers, error, fetch, uploadFile, clearSelection } = useTransferStore()
     const [dragging, setDragging] = useState(false)
     const [lasso, setLasso] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null)
@@ -206,6 +206,7 @@ export default function TransferGrid() {
             }`}
             onClick={e => {
                 if (!(e.target as HTMLElement).closest('button') && !lassoRef.current && !didLassoRef.current) clearSelection()
+                if (!(e.target as HTMLElement).closest('input')) (document.activeElement as HTMLElement)?.blur()
             }}
             onDragOver={handleFileDragOver}
             onDragLeave={handleFileDragLeave}
@@ -222,7 +223,7 @@ export default function TransferGrid() {
             >
                 <div
                     ref={barRef}
-                    className="absolute left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-20"
+                    className="absolute inset-x-0 mx-auto w-fit max-w-lg px-4 z-20"
                     style={{
                         top: transfers.length > 0
                             ? `calc(50vh + ${bounds.minY * cell - cell / 2 - GAP - barHeight + BAR_OFFSET}px)`
@@ -230,14 +231,22 @@ export default function TransferGrid() {
                         transition: 'top 0.3s ease-out',
                     }}
                 >
-                    <TransferBar />
+                    <div
+                        className="absolute inset-x-0 pointer-events-none z-[-1]"
+                        style={{
+                            top: '-0.5rem',
+                            bottom: '-1rem',
+                            background: `linear-gradient(to bottom, transparent, var(--color-bg) 0.5rem, var(--color-bg) calc(100% - 1rem), transparent)`,
+                        }}
+                    />
+                    <TransferBar onHelp={onHelp} />
                 </div>
                 {transfers.map((t, i) => {
                     const [gx, gy] = positions[i]
                     return (
                         <div
                             key={t.id}
-                            className="absolute"
+                            className="absolute z-10"
                             style={{
                                 left: `calc(50% + ${gx * cell - cell / 2}px)`,
                                 top: `calc(50% + ${gy * cell - cell / 2 + BAR_OFFSET}px)`,
@@ -253,7 +262,7 @@ export default function TransferGrid() {
                 })}
                 {lassoStyle && (
                     <div
-                        className="absolute pointer-events-none border border-accent/50 rounded-sm z-10"
+                        className="absolute pointer-events-none border border-accent/50 rounded-sm z-30"
                         style={{ ...lassoStyle, backgroundColor: 'rgba(35, 166, 122, 0.08)' }}
                     />
                 )}

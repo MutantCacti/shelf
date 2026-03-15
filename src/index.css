@@ -15,9 +15,25 @@
     font-display: swap;
 }
 
+@font-face {
+    font-family: 'Google Sans Code';
+    src: url('./assets/fonts/GoogleSansCode/GoogleSansCode-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Google Sans Code';
+    src: url('./assets/fonts/GoogleSansCode/GoogleSansCode-Italic-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: italic;
+    font-display: swap;
+}
+
 @theme {
     --breakpoint-sm: 480px;
     --font-sans: 'Figtree', sans-serif;
+    --font-mono: 'Google Sans Code', monospace;
 
     --color-accent: #23a67a;
     --color-accent-light: #35c492;
@@ -62,6 +78,11 @@ textarea:focus-visible {
 }
 
 
+.glow-wrap:hover {
+    transform: rotate(3deg) scale(1.05);
+    box-shadow: 0 4px 12px 2px rgba(0, 0, 0, 0.3);
+}
+
 @keyframes gradient-rotate {
     from { --gradient-angle: 0deg; }
     to { --gradient-angle: 360deg; }
@@ -75,20 +96,27 @@ textarea:focus-visible {
 
 .glow-wrap {
     position: relative;
-    border-radius: 10px;
     box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.2);
-    transition: background-color 0.15s ease-out;
+    transition: background-color 0.15s ease-out, transform 0.3s ease-out, box-shadow 0.3s ease-out;
+}
+
+@keyframes select-pop {
+    0% { rotate: 0deg; }
+    40% { rotate: -1.5deg; }
+    70% { rotate: 0.8deg; }
+    100% { rotate: 0deg; }
 }
 
 .glow-wrap.active {
     background-color: rgba(35, 166, 122, 0.08);
+    animation: select-pop 0.35s ease-out;
 }
 
 .glow-wrap.active::after {
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 10px;
+    border-radius: inherit;
     padding: 2px;
     background: conic-gradient(
         from var(--gradient-angle),

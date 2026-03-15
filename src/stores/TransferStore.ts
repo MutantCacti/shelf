@@ -10,7 +10,6 @@ interface TransferStore {
     ready: boolean
     error: string | null
     selected: number[]
-    localThumbs: Record<number, string>
     statusText: string
 
     fetch: () => Promise<void>
@@ -35,8 +34,6 @@ async function api(path: string, init?: RequestInit) {
     }
     return res
 }
-
-let tempId = -1
 
 function getStatusText(transfers: Transfer[]): string {
     const files = transfers.filter(t => t.type === 'file').length
@@ -69,7 +66,6 @@ const useTransferStore = create<TransferStore>((set, get) => ({
     error: null,
     statusText: 'try help',
     selected: [],
-    localThumbs: {},
 
     async fetch() {
         set({ inflight: get().inflight + 1, activity: 'Loading', error: null, selected: [] })
@@ -89,12 +85,7 @@ const useTransferStore = create<TransferStore>((set, get) => ({
         const dup = get().transfers.find(t => t.type === 'text' && t.content === content)
         if (dup) return dup.id
 
-        const id = tempId--
-        const optimistic: Transfer = {
-            id, type: 'text', content,
-            created_at: new Date().toISOString(), size: null,
-        }
-        set({ error: null, inflight: get().inflight + 1, activity: 'Saving', transfers: [optimistic, ...get().transfers] })
+        set({ error: null, inflight: get().inflight + 1, activity: 'Sending' })
 
         try {
             const res = await api('/', {
@@ -103,13 +94,9 @@ const useTransferStore = create<TransferStore>((set, get) => ({
                 body: JSON.stringify({ type: 'text', content }),
             })
             const transfer: Transfer = await res.json()
-            const transfers = get().transfers.map(t => t.id === id ? transfer : t)
-            set({ transfers })
+            set({ transfers: [transfer, ...get().transfers] })
         } catch (e: any) {
-            set({
-                error: e.message,
-                transfers: get().transfers.filter(t => t.id !== id),
-            })
+            set({ error: e.message })
         } finally {
             const n = get().inflight - 1
             set({ inflight: n, ...(n === 0 ? { activity: '', statusText: getStatusText(get().transfers) } : {}) })
@@ -117,35 +104,7 @@ const useTransferStore = create<TransferStore>((set, get) => ({
     },
 
     async uploadFile(file: File) {
-        const id = tempId--
-        const optimistic: Transfer = {
-            id, type: 'file', content: file.name,
-            created_at: new Date().toISOString(), size: file.size,
-        }
-
-        // Create local thumbnail for image files
-        const isSvg = file.type === 'image/svg+xml'
-        const isRasterImage = file.type.startsWith('image/') && !isSvg
-        if (isSvg) {
-            const url = URL.createObjectURL(file)
-            set({ localThumbs: { ...get().localThumbs, [id]: url } })
-        } else if (isRasterImage) {
-            try {
-                const bmp = await createImageBitmap(file)
-                const scale = Math.min(1, 150 / Math.max(bmp.width, bmp.height))
-                const w = Math.round(bmp.width * scale)
-                const h = Math.round(bmp.height * scale)
-                const canvas = new OffscreenCanvas(w, h)
-                const ctx = canvas.getContext('2d')!
-                ctx.drawImage(bmp, 0, 0, w, h)
-                bmp.close()
-                const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.5 })
-                const url = URL.createObjectURL(blob)
-                set({ localThumbs: { ...get().localThumbs, [id]: url } })
-            } catch { /* thumbnail generation failed, continue without */ }
-        }
-
-        set({ error: null, inflight: get().inflight + 1, activity: 'Uploading', transfers: [optimistic, ...get().transfers] })
+        set({ error: null, inflight: get().inflight + 1, activity: 'Uploading' })
 
         uploadQueue.push(async () => {
             try {
@@ -156,26 +115,9 @@ const useTransferStore = create<TransferStore>((set, get) => ({
                     body: form,
                 })
                 const transfer: Transfer = await res.json()
-                const transfers = get().transfers.map(t => t.id === id ? transfer : t)
-                set({ transfers })
-
-                // Migrate local thumbnail from temp ID to real ID
-                const thumb = get().localThumbs[id]
-                if (thumb) {
-                    const { [id]: _, ...rest } = get().localThumbs
-                    set({ localThumbs: { ...rest, [transfer.id]: thumb } })
-                }
+                set({ transfers: [transfer, ...get().transfers] })
             } catch (e: any) {
-                const thumb = get().localThumbs[id]
-                if (thumb) {
-                    URL.revokeObjectURL(thumb)
-                    const { [id]: _, ...rest } = get().localThumbs
-                    set({ localThumbs: rest })
-                }
-                set({
-                    error: e.message,
-                    transfers: get().transfers.filter(t => t.id !== id),
-                })
+                set({ error: e.message })
             } finally {
                 const n = get().inflight - 1
                 set({ inflight: n, ...(n === 0 ? { activity: '', statusText: getStatusText(get().transfers) } : {}) })
@@ -186,12 +128,6 @@ const useTransferStore = create<TransferStore>((set, get) => ({
 
     async remove(id: number) {
         const prev = get().transfers
-        const thumb = get().localThumbs[id]
-        if (thumb) {
-            URL.revokeObjectURL(thumb)
-            const { [id]: _, ...rest } = get().localThumbs
-            set({ localThumbs: rest })
-        }
         set({
             error: null,
             inflight: get().inflight + 1,
@@ -212,19 +148,11 @@ const useTransferStore = create<TransferStore>((set, get) => ({
 
     async batchRemove(ids: number[]) {
         const prev = get().transfers
-        const thumbs = { ...get().localThumbs }
-        for (const id of ids) {
-            if (thumbs[id]) {
-                URL.revokeObjectURL(thumbs[id])
-                delete thumbs[id]
-            }
-        }
         const idSet = new Set(ids)
         set({
             error: null,
             inflight: get().inflight + 1,
             activity: 'Deleting',
-            localThumbs: thumbs,
             transfers: prev.filter(t => !idSet.has(t.id)),
             selected: get().selected.filter(s => !idSet.has(s)),
         })
@@ -288,15 +216,8 @@ const useTransferStore = create<TransferStore>((set, get) => ({
     },
 
     clearSelection() {
-        set({ selected: [] })
+        set({ selected: [] },)
     },
 }))
-
-// Revoke blob URLs on page unload
-window.addEventListener('beforeunload', () => {
-    for (const url of Object.values(useTransferStore.getState().localThumbs)) {
-        URL.revokeObjectURL(url)
-    }
-})
 
 export default useTransferStore

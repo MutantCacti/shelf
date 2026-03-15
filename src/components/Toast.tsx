@@ -10,7 +10,7 @@ export default function ToastContainer() {
             {toasts.map(t => (
                 <div
                     key={t.id}
-                    className="px-4 py-2 rounded-lg bg-surface border border-border
+                    className="px-4 py-2 rounded-full bg-surface border border-border
                                text-sm text-text shadow-lg animate-fade-in
                                max-w-sm truncate"
                 >

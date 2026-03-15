@@ -28,23 +28,7 @@ export default function TextInput() {
             }
             return
         }
-        if (e.key === 'Enter' && value.trim() === 'help') {
-            createText([
-                'Keybinds',
-                'Enter — Upload / Download selected',
-                'Ctrl+A — Select all',
-                'Ctrl+V — Paste text or files',
-                'Ctrl+Esc — Logout',
-                'Enter — Submit text',
-                'Delete — Delete selected',
-                'Escape — Clear selection',
-                'Click — Copy text / Select file',
-                'Double-click — Download file',
-                'Click+drag — Lasso select',
-            ].join('\n'))
-            setValue('')
-            return
-        }
+
         if (e.key === 'Enter' && value.trim()) {
             createText(value.trim()).then(dupId => {
                 if (dupId) {
@@ -62,7 +46,7 @@ export default function TextInput() {
     }
 
     return (
-        <div className="flex-1">
+        <div className="flex-1 relative">
         <label htmlFor="text-input" className="sr-only">Transfer text</label>
         <input
             type="text"
@@ -76,12 +60,13 @@ export default function TextInput() {
             disabled={!!activity}
             placeholder="Send text"
             id="text-input"
-            className="w-full bg-bg/70 rounded-lg
-                       px-3 py-2 text-xs text-text placeholder:text-text-muted
+            className="peer w-full bg-transparent rounded-none
+                       mx-0.25 pl-2.75 my-0.25 py-1.5 text-xs text-text placeholder:text-text/60
                        hover:placeholder:text-accent focus:placeholder:text-accent
                        placeholder:transition-colors disabled:opacity-50"
             style={{ caretColor }}
         />
+        <div className="absolute bottom-1 left-3 right-0 h-px bg-border/30 pointer-events-none transition-colors peer-focus:bg-accent/50" />
         </div>
     )
 }

@@ -13,7 +13,7 @@ export default function DownloadButton() {
         <button
             onClick={handleClick}
             disabled={!hasFiles}
-            className={`pl-2 pr-3 transition-all rounded-lg cursor-pointer ${
+            className={`pl-1 transition-all rounded-full cursor-pointer ${
                 hasFiles
                     ? 'text-accent hover:text-accent-light focus-visible:text-accent-light hover-glow hover:-translate-y-0.5 focus-visible:-translate-y-0.5'
                     : 'text-text-muted opacity-50'

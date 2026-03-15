@@ -29,25 +29,25 @@ export default function ConfirmModal({ message, onConfirm, onCancel }: ConfirmMo
             onClick={onCancel}
         >
             <div
-                className="bg-surface border border-border rounded-xl p-6 mx-4"
+                className="bg-surface border border-border rounded-3xl p-4 pt-3"
                 onClick={e => e.stopPropagation()}
             >
-                <p className="text-text text-sm mb-5">{message}</p>
+                <p className="text-text text-sm mb-3">{message}</p>
                 <div className="flex justify-end gap-2">
                     <button
                         id="modal-confirm"
                         onClick={onConfirm}
                         autoFocus
-                        className="px-3 py-1.5 text-sm text-bg bg-accent rounded-lg
-                                   hover:bg-accent-light transition-colors"
+                        className="px-2 py-1 text-sm text-bg bg-red-400/60 rounded-full
+                                   hover:bg-red-400/80 transition-colors cursor-pointer"
+                        style={{ outlineColor: 'rgb(248 113 113 / 0.6)' }}
                     >
                         Delete
                     </button>
                     <button
                         id="modal-cancel"
                         onClick={onCancel}
-                        className="px-3 py-1.5 text-sm text-text-muted rounded-lg
-                                   border border-border hover:border-text-muted transition-colors"
+                        className="px-2 py-1 text-sm text-text-muted rounded-full bg-bg/50 transition-colors cursor-pointer hover:brightness-125"
                     >
                         Cancel
                     </button>

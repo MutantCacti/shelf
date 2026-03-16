@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useState, useCallback, useMemo, useRef } fr
 import useTransferStore from '../stores/TransferStore'
 import TransferItem from './TransferItem'
 import TransferBar from './TransferBar'
-
 const MAX_ITEM = 100
 const GAP = 16
 const MIN_ITEM = 40
@@ -265,7 +264,7 @@ export default function TransferGrid({ onHelp }: { onHelp: () => void }) {
                             style={{
                                 left: `calc(50% + ${gx * cell - cell / 2}px)`,
                                 top: `calc(50% + ${gy * cell - cell / 2 + BAR_OFFSET}px)`,
-                                transition: 'left 0.3s ease-out, top 0.3s ease-out',
+                                transition: 'left 0.15s cubic-bezier(0, 0, 0.2, 1), top 0.15s cubic-bezier(0, 0, 0.2, 1)',
                             }}
                         >
                             <TransferItem

@@ -72,6 +72,7 @@ The dev server proxies `/api` requests to the backend at `localhost:8000`.
 | `POST` | `/transfers/upload` | Upload file |
 | `GET` | `/transfers/:id/download` | Download file |
 | `GET` | `/transfers/:id/thumbnail` | Get thumbnail |
+| `PATCH` | `/transfers/:id` | Rename transfer |
 | `DELETE` | `/transfers/:id` | Delete transfer |
 | `POST` | `/transfers/batch-delete` | Delete multiple |
 | `POST` | `/transfers/batch-download` | Download as ZIP |

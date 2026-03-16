@@ -3,14 +3,15 @@ import { LuArrowLeft } from 'react-icons/lu'
 import Hero from '../components/Hero'
 
 const KEYBINDS = [
-    ['Click', 'Copy text / Select file'],
-    ['Double-click', 'Download file'],
+    ['Click', 'Select item'],
+    ['Double-click', 'Copy text / Download file'],
     ['Click+drag', 'Lasso select'],
     ['Ctrl+Enter', 'Upload / Download selected'],
     ['Ctrl+A', 'Select all'],
     ['Ctrl+V', 'Paste text or files'],
     ['Ctrl+Esc', 'Logout'],
-    ['Enter', 'Submit text'],
+    ['Enter', 'Copy selected text / Submit input'],
+    ['F2 / Right-click', 'Rename item'],
     ['Delete / Backspace', 'Delete selected'],
     ['Escape', 'Clear selection'],
     ['?', 'Help'],
@@ -64,10 +65,8 @@ export default function HelpPage({ onBack, onPassword }: { onBack: () => void, o
                     <div>
                         <h2 className="text-sm font-medium text-text mb-3">Gestures</h2>
                         <ul className="flex flex-col gap-2 text-sm text-text-muted">
-                            <li><span className="text-accent">Tap</span> a text item to copy it to your clipboard</li>
-                            <li><span className="text-accent">Tap</span> a file to select it</li>
-                            <li><span className="text-accent">Double-tap</span> a file to download it</li>
-                            <li><span className="text-accent">Tap + drag</span> to lasso-select multiple items</li>
+                            <li><span className="text-accent">Tap</span> an item to select it</li>
+                            <li><span className="text-accent">Double-tap</span> to copy text or download a file</li>
                         </ul>
                     </div>
 

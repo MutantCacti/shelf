@@ -41,7 +41,6 @@ export default function TransferBar({ onHelp }: { onHelp: () => void }) {
                     >
                         <LogoSpinner
                             className="h-7.5 w-7.5"
-                            fill="var(--color-accent)"
                             spinning={loading}
                         />
                     </button>
@@ -52,24 +51,22 @@ export default function TransferBar({ onHelp }: { onHelp: () => void }) {
             </div>
 
             {/* Mobile */}
-            <div className="sm:hidden flex flex-col items-center gap-2 select-none">
-                {error && (
-                    <p className="text-red-400/80 text-xs">{error}</p>
-                )}
-                <span className={`text-xs text-accent whitespace-nowrap ${loading ? 'opacity-100' : 'opacity-70'}`}>
-                    {statusLabel}
-                </span>
-                <button
-                    onClick={() => fetch()}
-                    className={`cursor-pointer transition-all rounded-full hover-glow mb-2 ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
-                    title="Refresh"
-                >
-                    <LogoSpinner
-                        className="h-12 w-12"
-                        fill="var(--color-accent)"
-                        spinning={loading}
-                    />
-                </button>
+            <div className="sm:hidden flex flex-col items-center gap-3 select-none">
+                <div className="inline-flex items-center gap-1">
+                    <button
+                        onClick={() => fetch()}
+                        className={`cursor-pointer transition-all rounded-full hover-glow ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
+                        title="Refresh"
+                    >
+                        <LogoSpinner
+                            className="h-10 w-10"
+                            spinning={loading}
+                        />
+                    </button>
+                    <span className={`text-xs text-accent whitespace-nowrap ${loading ? 'opacity-100' : 'opacity-70'}`}>
+                        {statusLabel}
+                    </span>
+                </div>
                 <div className="inline-flex items-center gap-2 px-1 py-1 rounded-full
                                 bg-surface border border-border/30"
                      style={{ boxShadow: '0 0 20px 8px rgba(0, 0, 0, 0.2)' }}>

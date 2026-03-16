@@ -79,7 +79,7 @@ textarea:focus-visible {
 
 
 .glow-wrap:hover {
-    transform: rotate(-3deg) scale(1.05);
+    transform: rotate(-1deg) scale(1.02);
     box-shadow: 0 4px 12px 2px rgba(0, 0, 0, 0.3);
 }
 
@@ -100,16 +100,8 @@ textarea:focus-visible {
     transition: background-color 0.15s ease-out, transform 0.3s ease-out, box-shadow 0.3s ease-out;
 }
 
-@keyframes select-pop {
-    0% { rotate: 0deg; }
-    40% { rotate: -0.5deg; }
-    70% { rotate: 0.25deg; }
-    100% { rotate: 0deg; }
-}
-
 .glow-wrap.active {
     background-color: rgba(35, 166, 122, 0.08);
-    animation: select-pop 0.2s ease-out;
 }
 
 .glow-wrap.active::after {
@@ -189,6 +181,10 @@ textarea:focus-visible {
         var(--color-accent-light),
         var(--color-accent-dark)
     );
+    animation: gradient-rotate 8s linear infinite;
+}
+
+.logo-glow.active {
     animation: gradient-rotate 2s linear infinite;
 }
 

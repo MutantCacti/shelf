@@ -3,7 +3,7 @@ from litestar.config.cors import CORSConfig
 from typing import Any
 
 from config import TRANSFERS_DIR
-from datetime import datetime
+from datetime import datetime, UTC
 from db import init_db, SessionLocal
 from models import EndpointStat, UserSession
 from routes.auth import auth_router
@@ -45,7 +45,7 @@ async def stats() -> dict:
 def _cleanup_expired_sessions():
     db = SessionLocal()
     try:
-        db.query(UserSession).filter(UserSession.expires_at < datetime.utcnow()).delete()
+        db.query(UserSession).filter(UserSession.expires_at < datetime.now(UTC).replace(tzinfo=None)).delete()
         db.commit()
     finally:
         db.close()

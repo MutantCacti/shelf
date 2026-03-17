@@ -35,7 +35,7 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
             <div className="hidden sm:inline-flex items-center gap-3 select-none">
                 <LogoutButton />
                 <InfoButton onClick={onHelp} />
-                <div className="relative inline-flex items-center gap-2 px-1 py-1 rounded-full
+                <div className="relative inline-flex items-center gap-2 px-1 py-1 rounded-full min-w-64
                                 bg-surface border border-border/30"
                      style={{ boxShadow: '0 0 20px 8px rgba(0, 0, 0, 0.2)' }}>
                     {error && (

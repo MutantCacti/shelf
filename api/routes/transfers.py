@@ -257,7 +257,7 @@ async def download_transfer(
             path=file_path,
             filename=transfer.content,
             media_type=mime_type,
-            headers={"Cache-Control": "private, max-age=86400, immutable"},
+            headers={"Cache-Control": "no-cache"},
         )
     finally:
         db.close()
@@ -379,7 +379,7 @@ async def thumbnail_transfer(
         return File(
             path=thumb_path,
             media_type="image/webp",
-            headers={"Cache-Control": "private, max-age=86400"},
+            headers={"Cache-Control": "no-cache"},
         )
 
     # Generate on demand (first request for pre-existing transfers)
@@ -404,7 +404,7 @@ async def thumbnail_transfer(
         return File(
             path=thumb_path,
             media_type="image/webp",
-            headers={"Cache-Control": "private, max-age=86400"},
+            headers={"Cache-Control": "no-cache"},
         )
     finally:
         db.close()

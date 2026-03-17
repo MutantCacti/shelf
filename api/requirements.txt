@@ -7,3 +7,5 @@ uvicorn
 Pillow
 cairosvg
 pymupdf
+pytest
+httpx

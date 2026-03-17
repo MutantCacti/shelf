@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from litestar import Router, post, get, delete, Request
 from litestar.exceptions import NotAuthorizedException, NotFoundException, ClientException
@@ -42,7 +42,7 @@ def validate_session_token(token: str) -> int | None:
         ).first()
         if session is None:
             return None
-        if session.expires_at > datetime.utcnow():
+        if session.expires_at > datetime.now(UTC).replace(tzinfo=None):
             return session.user_id
         # Expired - delete it
         db.delete(session)
@@ -71,7 +71,7 @@ def require_auth(request: Request[Any, Any, Any]) -> int:
                 ApiKey.key_hash == hash_token(key)
             ).first()
             if api_key:
-                api_key.last_used = datetime.utcnow()
+                api_key.last_used = datetime.now(UTC).replace(tzinfo=None)
                 db.commit()
                 return api_key.user_id
         finally:
@@ -85,7 +85,7 @@ async def login(data: LoginRequest) -> Response[LoginResponse]:
     """Login with password, returns session cookie."""
     db = SessionLocal()
     try:
-        db.query(UserSession).filter(UserSession.expires_at < datetime.utcnow()).delete()
+        db.query(UserSession).filter(UserSession.expires_at < datetime.now(UTC).replace(tzinfo=None)).delete()
 
         # Iterate all users, match by password
         matched_user = None
@@ -100,7 +100,7 @@ async def login(data: LoginRequest) -> Response[LoginResponse]:
         # Create session token and store hash in DB
         session_token = secrets.token_urlsafe(32)
         token_hash = hash_token(session_token)
-        expires_at = datetime.utcnow() + timedelta(seconds=SESSION_MAX_AGE)
+        expires_at = datetime.now(UTC).replace(tzinfo=None) + timedelta(seconds=SESSION_MAX_AGE)
 
         session_record = UserSession(
             token_hash=token_hash,
@@ -177,7 +177,7 @@ async def change_password(
 
         # Issue a fresh session
         session_token = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(seconds=SESSION_MAX_AGE)
+        expires_at = datetime.now(UTC).replace(tzinfo=None) + timedelta(seconds=SESSION_MAX_AGE)
         db.add(UserSession(
             token_hash=hash_token(session_token),
             user_id=user_id,

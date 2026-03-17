@@ -26,5 +26,6 @@ dist-ssr
 # Python
 __pycache__/
 *.pyc
+*.egg-info/
 api/.venv/
 api/data/

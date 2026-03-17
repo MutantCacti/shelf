@@ -10,10 +10,15 @@ export default defineConfig({
     define: {
         __APP_VERSION__: JSON.stringify(pkg.version),
     },
+    test: {
+        environment: 'jsdom',
+        setupFiles: ['./src/test-setup.ts'],
+        exclude: ['e2e/**', 'node_modules/**'],
+    },
     server: {
         proxy: {
             '/api': {
-                target: 'http://127.0.0.1:8000',
+                target: `http://127.0.0.1:${process.env.VITE_API_PORT || 8000}`,
                 rewrite: (path) => path.replace(/^\/api/, ''),
             }
         },

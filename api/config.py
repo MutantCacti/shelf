@@ -3,9 +3,10 @@ import os
 import secrets
 
 BASE_DIR = Path(__file__).parent
+DATA_DIR = Path(os.environ.get("SHELF_DATA_DIR", BASE_DIR / "data"))
 
 # Database
-DATABASE_PATH = BASE_DIR / "data" / "shelf.db"
+DATABASE_PATH = DATA_DIR / "shelf.db"
 DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
 # Session
@@ -14,5 +15,5 @@ SESSION_COOKIE_NAME = "shelf_session"
 SESSION_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 
 # Transfers
-TRANSFERS_DIR = BASE_DIR / "data" / "transfers"
-THUMBS_DIR = BASE_DIR / "data" / "thumbs"
+TRANSFERS_DIR = DATA_DIR / "transfers"
+THUMBS_DIR = DATA_DIR / "thumbs"

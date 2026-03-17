@@ -34,24 +34,26 @@ python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
 shelf-install
-shelf-adduser
 shelf-start
 ```
 
-The dev server proxies `/api` requests to the backend at `localhost:8000`.
+`shelf-install` creates a dev user with password `test`. The dev server proxies `/api` requests to the backend at `localhost:8000`.
 
 ### Development scripts
 
-Shelf includes cross-platform development scripts, installed via `pip install -e .`.
+Shelf includes cross-platform development scripts, installed via `pip install -e .`. Run `shelf-help` for a quick reference.
 
 | Command | Description |
 |---------|-------------|
-| `shelf-install` | Set up API venv and install all dependencies |
+| `shelf-install` | Set up API venv, npm install, and create dev user |
 | `shelf-start` | Start API and frontend dev servers |
 | `shelf-stop` | Stop running services by port |
-| `shelf-test` | Run API and frontend test suites |
-| `shelf-adduser` | Create a new user |
-| `shelf-clean` | Remove generated and temporary files |
+| `shelf-test` | Run all tests (unit + e2e) |
+| `shelf-test unit` | Run API and frontend unit tests only |
+| `shelf-test e2e` | Start test services and run Playwright e2e tests |
+| `shelf-test e2e --headed` | Run e2e tests with a visible browser |
+| `shelf-adduser` | Create a new user (pass password as arg or interactive) |
+| `shelf-clean` | Remove all generated files (preserves root .venv) |
 | `shelf-help` | Show available commands |
 
 ### Test mode
@@ -59,6 +61,10 @@ Shelf includes cross-platform development scripts, installed via `pip install -e
 Set `SHELF_TEST=1` in a `.env` file at the project root to run Shelf in test mode. This uses an isolated database in a temp directory and separate ports (9000/9001), so it won't interfere with your real data or a running dev instance. A test user with password `test` is created automatically.
 
 Remove `SHELF_TEST=1` and restart to return to normal mode.
+
+### Testing
+
+`shelf-test` runs all test suites. Use `shelf-test unit` to run only API and frontend unit tests (no services needed), or `shelf-test e2e` to start test mode services and run Playwright end-to-end tests. The e2e runner manages its own service lifecycle — it starts, tests, and shuts down automatically.
 
 ## API reference
 

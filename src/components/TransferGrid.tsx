@@ -217,6 +217,7 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
     return (
         <div
             ref={containerRef}
+            data-testid="transfer-grid"
             className={`flex-1 flex flex-col overflow-auto transition-colors ${
                 dragging ? 'bg-accent/5' : ''
             }`}

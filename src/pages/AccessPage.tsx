@@ -97,7 +97,7 @@ export default function AccessPage({ onLogin }: { onLogin: () => void }) {
                     </button>
                 </div>
                 {error && (
-                    <p className="text-xs text-red-400/80">{error}</p>
+                    <p className="text-xs text-red-400/80" data-testid="login-error">{error}</p>
                 )}
             </form>
         </main>

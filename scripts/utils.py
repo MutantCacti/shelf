@@ -121,12 +121,15 @@ def run(
 # Network
 
 def wait_for_service(host: str, port: int, timeout: int = 30) -> bool:
-    """Block until a TCP connection succeeds or timeout expires."""
+    """Block until a TCP connection succeeds or timeout expires. Tries both IPv4 and IPv6."""
     deadline = time.monotonic() + timeout
+    targets = [(host, port), ("::1", port)] if host == "127.0.0.1" else [(host, port)]
     while time.monotonic() < deadline:
-        try:
-            with socket.create_connection((host, port), timeout=1):
-                return True
-        except OSError:
-            time.sleep(0.5)
+        for target in targets:
+            try:
+                with socket.create_connection(target, timeout=1):
+                    return True
+            except OSError:
+                pass
+        time.sleep(0.5)
     return False

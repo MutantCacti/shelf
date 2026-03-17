@@ -34,9 +34,10 @@ LABELS = {
     "frontend": colored("FRONTEND", "green"),
 }
 
-# Test mode
+# Defaults
 
-TEST_PASSWORD = "test"
+DEV_PASSWORD = "test"
+TEST_PASSWORD = DEV_PASSWORD
 TEST_DATA_DIR = Path(tempfile.gettempdir()) / "shelf-test"
 
 

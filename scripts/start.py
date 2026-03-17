@@ -44,18 +44,11 @@ def start_service(cmd: list[str], cwd, prefix: str, env: dict[str, str] | None =
 
 def seed_test_user() -> None:
     """Create a test user in the test database if none exists."""
-    import os
-    api_env = get_api_env()
-    merged_env = {**os.environ, **api_env}
-
     python = get_venv_python(API / ".venv")
-    subprocess.run(
-        [str(python), "setup_user.py", TEST_PASSWORD],
-        cwd=API,
-        env=merged_env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    try:
+        run([str(python), "setup_user.py", TEST_PASSWORD], cwd=API, env=get_api_env())
+    except subprocess.CalledProcessError:
+        pass
 
 
 def start_api() -> subprocess.Popen:

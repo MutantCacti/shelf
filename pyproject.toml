@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shelf-scripts"
+version = "0.0.0"  # unversioned, installed locally only
+description = "Cross-platform development scripts for Shelf"
+requires-python = ">=3.12"
+dependencies = [
+    "psutil>=5.9",
+    "termcolor>=3.1",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-playwright>=0.7",
+]
+
+[project.scripts]
+shelf-install = "scripts.install:main"
+shelf-start = "scripts.start:main"
+shelf-stop = "scripts.stop:main"
+shelf-test = "scripts.test:main"
+shelf-adduser = "scripts.adduser:main"
+shelf-clean = "scripts.clean:main"
+shelf-help = "scripts.help:main"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:Core Pydantic V1 functionality:UserWarning",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["scripts*"]

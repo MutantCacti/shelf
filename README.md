@@ -8,7 +8,7 @@ Ever needed a sentence moved from your phone to your laptop? How about a file?
 
 Shelf is a personal transfer tool for moving stuff between your devices. You can send yourself anything, including reminders, photos, links, and long OTPs.
 
-![Shelf interface](docs/screenshot.png)
+![Shelf interface](design/screenshot.png)
 
 ## Features
 
@@ -29,25 +29,36 @@ Shelf is a personal transfer tool for moving stuff between your devices. You can
 
 Requires **Python 3.12+** and **Node 20+**.
 
-### API
-
 ```bash
-cd api
 python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python setup_user.py
-uvicorn main:app --host 127.0.0.1 --port 8000
-```
-
-### Frontend
-
-```bash
-npm install
-npm run dev
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e .
+shelf-install
+shelf-adduser
+shelf-start
 ```
 
 The dev server proxies `/api` requests to the backend at `localhost:8000`.
+
+### Development scripts
+
+Shelf includes cross-platform development scripts, installed via `pip install -e .`.
+
+| Command | Description |
+|---------|-------------|
+| `shelf-install` | Set up API venv and install all dependencies |
+| `shelf-start` | Start API and frontend dev servers |
+| `shelf-stop` | Stop running services by port |
+| `shelf-test` | Run API and frontend test suites |
+| `shelf-adduser` | Create a new user |
+| `shelf-clean` | Remove generated and temporary files |
+| `shelf-help` | Show available commands |
+
+### Test mode
+
+Set `SHELF_TEST=1` in a `.env` file at the project root to run Shelf in test mode. This uses an isolated database in a temp directory and separate ports (9000/9001), so it won't interfere with your real data or a running dev instance. A test user with password `test` is created automatically.
+
+Remove `SHELF_TEST=1` and restart to return to normal mode.
 
 ## API reference
 
@@ -76,6 +87,7 @@ The dev server proxies `/api` requests to the backend at `localhost:8000`.
 | `DELETE` | `/transfers/:id` | Delete transfer |
 | `POST` | `/transfers/batch-delete` | Delete multiple |
 | `POST` | `/transfers/batch-download` | Download as ZIP |
+| `GET` | `/transfers/usage` | Storage usage |
 
 ### Other
 

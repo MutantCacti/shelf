@@ -10,6 +10,10 @@ export default defineConfig({
     define: {
         __APP_VERSION__: JSON.stringify(pkg.version),
     },
+    test: {
+        environment: 'jsdom',
+        setupFiles: ['./src/test-setup.ts'],
+    },
     server: {
         proxy: {
             '/api': {

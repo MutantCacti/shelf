@@ -79,6 +79,7 @@ textarea:focus-visible {
 
 
 .glow-wrap:hover {
+    will-change: transform;
     transform: rotate(-1deg) scale(1.02);
     box-shadow: 0 4px 12px 2px rgba(0, 0, 0, 0.3);
 }

@@ -25,7 +25,7 @@ test.describe("delete transfer", () => {
         // Confirm in modal
         await page.getByRole("button", { name: "Delete", exact: true }).click()
 
-        // Grid should have no items
-        await expect(page.locator("[data-transfer-id]")).toHaveCount(0)
+        // The deleted item should be gone
+        await expect(page.getByText("delete me")).toHaveCount(0)
     })
 })

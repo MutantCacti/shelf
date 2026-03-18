@@ -165,7 +165,7 @@ def main() -> None:
         suites.append((LABELS["api"], "UNIT", test_api_unit))
         suites.append((LABELS["frontend"], "UNIT", test_frontend_unit))
     if run_e2e:
-        suites.append((LABELS["frontend"], "E2E", lambda: test_e2e(extra_args)))
+        suites.append(("E2E", "E2E", lambda: test_e2e(extra_args)))
 
     results = []
     for label, kind, fn in suites:

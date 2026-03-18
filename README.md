@@ -1,6 +1,6 @@
 # Shelf
 
-A simple online transfer tool.
+A website for sending things to yourself.
 
 ## What is Shelf?
 

@@ -10,4 +10,6 @@ Large file uploads could create the Item early and show a progress bar -- this c
 
 Implement SSE for immediate refresh on other devices when you have shelf open on two screens at once (replaces manual reload on receiving device)
 
+Make selection persist across sessions
+
 Add preview modal for all files

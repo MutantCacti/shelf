@@ -89,21 +89,23 @@ describe('TransferItem', () => {
     })
 
 
-    it('double-click on file triggers download', async () => {
-        const downloadFn = vi.fn()
-        useTransferStore.setState({
-            transfers: [fileTransfer],
-        })
-        const original = useTransferStore.getState().download
-        useTransferStore.setState({ download: downloadFn } as any)
+    it('click on file dispatches shelf:preview', async () => {
+        vi.useFakeTimers()
+        useTransferStore.setState({ transfers: [fileTransfer] })
+
+        const onPreview = vi.fn()
+        window.addEventListener('shelf:preview', onPreview)
 
         const { container } = render(<TransferItem transfer={fileTransfer} />)
         const btn = container.querySelector('button')!
-        await userEvent.dblClick(btn)
+        fireEvent.click(btn)
+        vi.advanceTimersByTime(60)
 
-        expect(downloadFn).toHaveBeenCalledWith(fileTransfer.id)
+        expect(onPreview).toHaveBeenCalledOnce()
+        expect((onPreview.mock.calls[0][0] as CustomEvent).detail).toBe(fileTransfer.id)
 
-        useTransferStore.setState({ download: original } as any)
+        window.removeEventListener('shelf:preview', onPreview)
+        vi.useRealTimers()
     })
 
 

@@ -217,7 +217,7 @@ interface TransferItemProps {
 }
 
 export default function TransferItem({ transfer, size = 100, editing, onStartEdit, onCommitEdit, onCancelEdit }: TransferItemProps) {
-    const { selected, toggleSelect, download } = useTransferStore()
+    const { selected, toggleSelect } = useTransferStore()
     const [copied, setCopied] = useState(false)
     const [editValue, setEditValue] = useState(transfer.content)
     const editRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
@@ -267,6 +267,9 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
     function handleClick() {
         clickTimer.current = window.setTimeout(() => {
             toggleSelect(transfer.id)
+            if (transfer.type === 'file') {
+                window.dispatchEvent(new CustomEvent('shelf:preview', { detail: transfer.id }))
+            }
             clickTimer.current = null
         }, 50)
     }
@@ -279,7 +282,8 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
         if (transfer.type === 'text') {
             copyText()
         } else {
-            download(transfer.id)
+            toggleSelect(transfer.id)
+            window.dispatchEvent(new CustomEvent('shelf:preview', { detail: transfer.id }))
         }
     }
 

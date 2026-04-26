@@ -13,6 +13,7 @@ COMMANDS = [
     ("shelf-test e2e --headed", "Run e2e tests with a visible browser"),
     ("shelf-adduser", "Create a new user (pass password as arg or interactive)"),
     ("shelf-clean", "Remove all generated files (preserves root .venv)"),
+    ("shelf-https", "Set up HTTPS certificates using mkcert"),
     ("shelf-help", "Show this help message"),
 ]
 

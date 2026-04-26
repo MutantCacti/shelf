@@ -25,6 +25,7 @@ shelf-stop = "scripts.stop:main"
 shelf-test = "scripts.test:main"
 shelf-adduser = "scripts.adduser:main"
 shelf-clean = "scripts.clean:main"
+shelf-https = "scripts.https:main"
 shelf-help = "scripts.help:main"
 
 [tool.pytest.ini_options]

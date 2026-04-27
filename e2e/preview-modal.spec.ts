@@ -23,29 +23,18 @@ test.describe("preview modal", () => {
         await page.getByTestId("transfer-grid").waitFor()
     })
 
-    test("clicking a file opens the preview modal", async ({ page }) => {
+    test("preview a file via eye icon then close with Escape", async ({ page }) => {
         const fileInput = page.locator("#upload-input").first()
         await fileInput.setInputFiles(tmpFile)
 
         const item = page.locator("[data-transfer-id]").first()
         await expect(item).toContainText("shelf-e2e-preview.txt")
 
-        await item.locator("button").first().click()
+        await item.getByLabel("Preview").click()
 
         const modal = page.getByTestId("preview-modal")
         await expect(modal).toBeVisible()
         await expect(modal).toContainText("shelf-e2e-preview.txt")
-    })
-
-    test("Escape closes the preview modal", async ({ page }) => {
-        const fileInput = page.locator("#upload-input").first()
-        await fileInput.setInputFiles(tmpFile)
-
-        const item = page.locator("[data-transfer-id]").first()
-        await item.locator("button").first().click()
-
-        const modal = page.getByTestId("preview-modal")
-        await expect(modal).toBeVisible()
 
         await page.keyboard.press("Escape")
         await expect(modal).not.toBeVisible()

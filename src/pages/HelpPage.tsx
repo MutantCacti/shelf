@@ -3,8 +3,9 @@ import { LuArrowLeft } from 'react-icons/lu'
 import Hero from '../components/Hero'
 
 const KEYBINDS = [
-    ['Click', 'Select item / Preview file'],
-    ['Double-click', 'Copy text'],
+    ['Click', 'Select item'],
+    ['Double-click', 'Copy text / Download file'],
+    ['Eye icon', 'Preview item'],
     ['Click+drag', 'Lasso select'],
     ['Ctrl+Enter', 'Upload / Download selected'],
     ['Ctrl+A', 'Select all'],

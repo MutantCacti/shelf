@@ -21,6 +21,14 @@ const archiveTransfer: Transfer = {
     size: 2048,
 }
 
+const textTransfer: Transfer = {
+    id: 3,
+    type: 'text',
+    content: 'first line\nsecond line',
+    created_at: '2026-01-01T00:00:00Z',
+    size: null,
+}
+
 describe('PreviewModal', () => {
     beforeEach(() => {
         vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -83,8 +91,34 @@ describe('PreviewModal', () => {
         useTransferStore.setState({ download } as any)
         render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} />)
 
-        await userEvent.click(screen.getByText('Download'))
+        await userEvent.click(screen.getByLabelText('Download'))
 
         expect(download).toHaveBeenCalledWith(2)
+    })
+
+    it('renders text content for text-type transfers', () => {
+        render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} />)
+        const modal = screen.getByTestId('preview-modal')
+        expect(modal).toHaveTextContent('first line')
+        expect(modal).toHaveTextContent('second line')
+    })
+
+    it('shows Copy (not Download) button for text-type transfers', () => {
+        render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} />)
+        expect(screen.getByLabelText('Copy')).toBeInTheDocument()
+        expect(screen.queryByLabelText('Download')).not.toBeInTheDocument()
+    })
+
+    it('Copy button writes text to clipboard', async () => {
+        const writeText = vi.fn()
+        Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText },
+            configurable: true,
+        })
+
+        render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} />)
+        await userEvent.click(screen.getByLabelText('Copy'))
+
+        expect(writeText).toHaveBeenCalledWith('first line\nsecond line')
     })
 })

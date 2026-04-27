@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LuDownload, LuX, LuFile } from 'react-icons/lu'
+import { LuDownload, LuX, LuFile, LuClipboard, LuCheck } from 'react-icons/lu'
 import { Transfer } from '../types/types'
 import useTransferStore from '../stores/TransferStore'
 
@@ -36,7 +36,14 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
     const [visible, setVisible] = useState(false)
     const [textContent, setTextContent] = useState<string | null>(null)
     const [textError, setTextError] = useState<string | null>(null)
+    const [copied, setCopied] = useState(false)
     const download = useTransferStore(s => s.download)
+
+    function copyTextContent() {
+        navigator.clipboard.writeText(transfer.content)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1200)
+    }
 
     useEffect(() => {
         requestAnimationFrame(() => setVisible(true))
@@ -76,7 +83,13 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
     }, [isText, transfer.id, transfer.size])
 
     let body: React.ReactNode
-    if (IMAGE_EXTS.has(ext)) {
+    if (transfer.type === 'text') {
+        body = (
+            <div className="text-sm text-text whitespace-pre-wrap wrap-break-word">
+                {transfer.content}
+            </div>
+        )
+    } else if (IMAGE_EXTS.has(ext)) {
         body = (
             <img
                 src={`/api/transfers/${transfer.id}/download`}
@@ -115,7 +128,7 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
             body = <p className="text-sm text-text-muted text-center py-12">Loading…</p>
         } else {
             body = (
-                <pre className="whitespace-pre-wrap break-words text-xs text-text bg-bg/50 rounded-lg p-4 max-h-[70vh] overflow-auto font-mono">
+                <pre className="whitespace-pre-wrap wrap-break-word text-xs text-text bg-bg/50 rounded-lg p-4 max-h-[70vh] overflow-auto font-mono">
                     {textContent}
                 </pre>
             )
@@ -145,34 +158,52 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
                 onClick={e => e.stopPropagation()}
             >
                 <header className="flex items-center justify-between gap-4 px-5 py-3 border-b border-border/40">
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-sm text-text truncate">{transfer.content}</span>
-                        {transfer.size != null && (
-                            <span className="text-xs text-text-muted">{formatSize(transfer.size)}</span>
+                    <div className="flex flex-col min-w-0 flex-1">
+                        {transfer.type === 'file' && (
+                            <>
+                                <span className="text-sm text-text truncate">{transfer.content}</span>
+                                {transfer.size != null && (
+                                    <span className="text-xs text-text-muted">{formatSize(transfer.size)}</span>
+                                )}
+                            </>
                         )}
                     </div>
-                    <button
-                        id="preview-close"
-                        onClick={dismiss}
-                        aria-label="Close"
-                        className="p-1.5 text-text-muted rounded-lg hover:bg-bg/50 transition-colors cursor-pointer"
-                    >
-                        <LuX size={16} />
-                    </button>
+                    <div className="inline-flex items-center gap-3 shrink-0">
+                        {transfer.type === 'text' ? (
+                            <button
+                                id="preview-copy"
+                                onClick={copyTextContent}
+                                aria-label="Copy"
+                                title="Copy"
+                                className="cursor-pointer transition-all rounded-full text-accent hover:text-accent-light focus-visible:text-accent-light hover-glow hover:-translate-y-0.5 focus-visible:-translate-y-0.5"
+                            >
+                                {copied ? <LuCheck size={20} /> : <LuClipboard size={20} />}
+                            </button>
+                        ) : (
+                            <button
+                                id="preview-download"
+                                onClick={() => download(transfer.id)}
+                                aria-label="Download"
+                                title="Download"
+                                className="cursor-pointer transition-all rounded-full text-accent hover:text-accent-light focus-visible:text-accent-light hover-glow hover:-translate-y-0.5 focus-visible:-translate-y-0.5"
+                            >
+                                <LuDownload size={20} />
+                            </button>
+                        )}
+                        <button
+                            id="preview-close"
+                            onClick={dismiss}
+                            aria-label="Close"
+                            title="Close"
+                            className="cursor-pointer transition-all rounded-full text-red-400 hover:text-red-300 focus-visible:text-red-300 hover-glow"
+                        >
+                            <LuX size={20} />
+                        </button>
+                    </div>
                 </header>
                 <div className="flex-1 overflow-auto px-5 py-4 min-h-0">
                     {body}
                 </div>
-                <footer className="flex justify-end gap-2 px-5 py-3 border-t border-border/40">
-                    <button
-                        id="preview-download"
-                        onClick={() => download(transfer.id)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-bg font-medium bg-accent/80 rounded-lg hover:bg-accent transition-colors cursor-pointer"
-                    >
-                        <LuDownload size={14} />
-                        Download
-                    </button>
-                </footer>
             </div>
         </div>
     )

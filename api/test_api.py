@@ -247,10 +247,11 @@ def test_upload_and_download_file(auth_client):
     assert resp.headers["vary"] == "Cookie"
     assert resp.headers["content-disposition"].startswith("attachment;")
 
+    # octet-stream is not in the inline allowlist — silently downgrades to attachment.
     resp = auth_client.get(f"/transfers/{transfer_id}/download?inline=1")
     assert resp.status_code == 200
     assert resp.content == content
-    assert resp.headers["content-disposition"].startswith("inline")
+    assert resp.headers["content-disposition"].startswith("attachment;")
 
 
 def test_thumbnail_cache_header(auth_client):
@@ -264,6 +265,61 @@ def test_thumbnail_cache_header(auth_client):
     resp = auth_client.get(f"/transfers/{transfer_id}/thumbnail")
     assert resp.status_code == 200
     assert resp.headers["cache-control"] == "no-cache"
+
+
+@pytest.mark.parametrize("filename,disposition", [
+    # Blocked: browsers execute these inline as documents.
+    ("evil.html", "attachment"),
+    ("evil.svg", "attachment"),
+    ("evil.xhtml", "attachment"),
+    # Allowed: image/video/audio/pdf render inline without script execution.
+    ("ok.png", "inline"),
+    ("ok.pdf", "inline"),
+])
+def test_inline_disposition_allowlist(auth_client, filename, disposition):
+    """`?inline=1` only honors safe mime types; unsafe types downgrade to attachment."""
+    body = TINY_PNG if filename.endswith(".png") else b"<x>not the real format</x>"
+    resp = auth_client.post(
+        "/transfers/upload",
+        files={"data": (filename, body, "application/octet-stream")},
+    )
+    transfer_id = resp.json()["id"]
+
+    resp = auth_client.get(f"/transfers/{transfer_id}/download?inline=1")
+    assert resp.status_code == 200
+    assert resp.headers["content-disposition"].startswith(f"{disposition}")
+
+
+def test_nosniff_header_present(auth_client):
+    """All download-family responses set X-Content-Type-Options: nosniff."""
+    file_resp = auth_client.post(
+        "/transfers/upload",
+        files={"data": ("pixel.png", TINY_PNG, "image/png")},
+    )
+    file_id = file_resp.json()["id"]
+
+    text_resp = auth_client.post("/transfers/", json={"type": "text", "content": "hi"})
+    text_id = text_resp.json()["id"]
+
+    # File download (attachment + inline-allowed)
+    for url in (
+        f"/transfers/{file_id}/download",
+        f"/transfers/{file_id}/download?inline=1",
+    ):
+        resp = auth_client.get(url)
+        assert resp.headers["x-content-type-options"] == "nosniff", url
+
+    # Text download
+    resp = auth_client.get(f"/transfers/{text_id}/download")
+    assert resp.headers["x-content-type-options"] == "nosniff"
+
+    # Thumbnail
+    resp = auth_client.get(f"/transfers/{file_id}/thumbnail")
+    assert resp.headers["x-content-type-options"] == "nosniff"
+
+    # Batch download
+    resp = auth_client.post("/transfers/batch-download", json={"ids": [file_id]})
+    assert resp.headers["x-content-type-options"] == "nosniff"
 
 
 def test_delete_transfer(auth_client):

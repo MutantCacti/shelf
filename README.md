@@ -16,8 +16,10 @@ Shelf is a personal transfer tool for moving stuff between your devices. You can
 - Send text directly from the toolbar.
 - Multi-user with per-user passwords.
 - Thumbnails for images, PDFs, and SVGs.
+- Preview modal (double-click) for images, PDFs, video, audio, and text with Ctrl+wheel zoom and click-drag pan for images.
 - Lasso selection and full keyboard shortcuts (press `?` in-app).
 - Mobile UI with paste, upload, download, and delete.
+- Optional HTTPS dev mode via `shelf-https` (mkcert-based local certs).
 - 1GB file upload limit.
 
 ## Tech stack
@@ -54,7 +56,12 @@ Shelf includes cross-platform development scripts, installed via `pip install -e
 | `shelf-test e2e --headed` | Run e2e tests with a visible browser |
 | `shelf-adduser` | Create a new user (pass password as arg or interactive) |
 | `shelf-clean` | Remove all generated files (preserves root .venv) |
+| `shelf-https` | Generate local HTTPS certificates via mkcert |
 | `shelf-help` | Show available commands |
+
+### HTTPS in dev
+
+Run `shelf-https` once to generate local certificates (`certs/cert.pem`, `certs/key.pem`) via mkcert, which is downloaded automatically if not on your `PATH`. After that, `shelf-start` auto-detects the certs and serves both the API and Vite dev server over HTTPS. The startup banner reads `dev mode, HTTPS` when active. Test mode (`SHELF_TEST=1`) ignores certs and stays on HTTP to avoid breaking Playwright e2e.
 
 ### Test mode
 
@@ -87,7 +94,7 @@ Remove `SHELF_TEST=1` and restart to return to normal mode.
 | `GET` | `/transfers` | List all transfers |
 | `POST` | `/transfers` | Create text transfer |
 | `POST` | `/transfers/upload` | Upload file |
-| `GET` | `/transfers/:id/download` | Download file |
+| `GET` | `/transfers/:id/download` | Download file (append `?inline=1` for safe-MIME inline disposition) |
 | `GET` | `/transfers/:id/thumbnail` | Get thumbnail |
 | `PATCH` | `/transfers/:id` | Rename transfer |
 | `DELETE` | `/transfers/:id` | Delete transfer |

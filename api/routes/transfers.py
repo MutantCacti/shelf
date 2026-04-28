@@ -226,10 +226,11 @@ async def batch_delete_transfers(
         db.close()
 
 
-@get("/{transfer_id:int}/download")
+@get("/{transfer_id:int}/download", cache_control=CacheControlHeader(no_store=True))
 async def download_transfer(
     transfer_id: int,
     request: Request[Any, Any, Any],
+    inline: bool = False,
 ) -> Response | File:
     """Download a transfer owned by the current user."""
     user_id = require_auth(request)
@@ -242,8 +243,12 @@ async def download_transfer(
         if transfer is None:
             raise NotFoundException(f"Transfer {transfer_id} not found")
 
+        headers = {"Vary": "Cookie"}
+
         if transfer.type == "text":
-            return Response(content=transfer.content, media_type="text/plain")
+            if inline:
+                headers["Content-Disposition"] = "inline"
+            return Response(content=transfer.content, media_type="text/plain", headers=headers)
 
         file_path = user_transfers_dir(user_id) / str(transfer.id)
         if not file_path.exists():
@@ -257,7 +262,8 @@ async def download_transfer(
             path=file_path,
             filename=transfer.content,
             media_type=mime_type,
-            headers={"Cache-Control": "no-cache"},
+            content_disposition_type="inline" if inline else "attachment",
+            headers=headers,
         )
     finally:
         db.close()

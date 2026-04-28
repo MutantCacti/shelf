@@ -243,7 +243,14 @@ def test_upload_and_download_file(auth_client):
     resp = auth_client.get(f"/transfers/{transfer_id}/download")
     assert resp.status_code == 200
     assert resp.content == content
-    assert resp.headers["cache-control"] == "no-cache"
+    assert resp.headers["cache-control"] == "no-store"
+    assert resp.headers["vary"] == "Cookie"
+    assert resp.headers["content-disposition"].startswith("attachment;")
+
+    resp = auth_client.get(f"/transfers/{transfer_id}/download?inline=1")
+    assert resp.status_code == 200
+    assert resp.content == content
+    assert resp.headers["content-disposition"].startswith("inline")
 
 
 def test_thumbnail_cache_header(auth_client):

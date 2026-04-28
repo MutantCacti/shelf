@@ -53,6 +53,7 @@ class Transfer(Base):
 
     __table_args__ = (
         CheckConstraint("type IN ('text', 'file')", name="valid_transfer_type"),
+        {"sqlite_autoincrement": True},
     )
 
 

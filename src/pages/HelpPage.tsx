@@ -4,8 +4,7 @@ import Hero from '../components/Hero'
 
 const KEYBINDS = [
     ['Click', 'Select item'],
-    ['Double-click', 'Copy text / Download file'],
-    ['Eye icon', 'Preview item'],
+    ['Double-click', 'Preview item'],
     ['Click+drag', 'Lasso select'],
     ['Ctrl+Enter', 'Upload / Download selected'],
     ['Ctrl+A', 'Select all'],

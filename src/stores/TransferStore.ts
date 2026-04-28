@@ -46,7 +46,7 @@ function formatBytes(bytes: number): string {
 
 function getStatusText(usage: { used: number; limit: number } | null): string {
     if (!usage || usage.limit === 0) return ''
-    return `${Math.round(usage.used / usage.limit * 100)}%`
+    return `${Math.round(usage.used / usage.limit * 100)}% used`
 }
 
 // Atomic inflight helpers to avoid race conditions

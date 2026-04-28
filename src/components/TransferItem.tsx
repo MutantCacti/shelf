@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
     LuImage, LuFileText, LuFileCode, LuFileTerminal,
     LuFileArchive, LuFile, LuCheck, LuFileAudio, LuFileVideo,
-    LuFileSpreadsheet, LuBraces, LuPresentation, LuEye, LuClipboard,
+    LuFileSpreadsheet, LuBraces, LuPresentation, LuClipboard,
 } from 'react-icons/lu'
 import { Transfer } from '../types/types'
 import useTransferStore from '../stores/TransferStore'
@@ -213,15 +213,14 @@ interface TransferItemProps {
 }
 
 export default function TransferItem({ transfer, size = 100, editing, onStartEdit, onCommitEdit, onCancelEdit }: TransferItemProps) {
-    const { selected, toggleSelect, download } = useTransferStore()
+    const { selected, toggleSelect } = useTransferStore()
     const [copied, setCopied] = useState(false)
     const [editValue, setEditValue] = useState(transfer.content)
     const editRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
     const isSelected = selected.includes(transfer.id)
     const iconSize = Math.round(size * 0.4)
-    const fileIconSize = Math.round(size * 0.3)
+    const fileIconSize = Math.round(size * 0.25)
     const dim = `${size}px`
-    const clickTimer = useRef<number | null>(null)
 
     function copyText() {
         navigator.clipboard.writeText(transfer.content)
@@ -262,22 +261,11 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
     }, [transfer.id])
 
     function handleClick() {
-        clickTimer.current = window.setTimeout(() => {
-            toggleSelect(transfer.id)
-            clickTimer.current = null
-        }, 50)
+        toggleSelect(transfer.id)
     }
 
     function handleDoubleClick() {
-        if (clickTimer.current != null) {
-            clearTimeout(clickTimer.current)
-            clickTimer.current = null
-        }
-        if (transfer.type === 'text') {
-            copyText()
-        } else {
-            download(transfer.id)
-        }
+        window.dispatchEvent(new CustomEvent('shelf:preview', { detail: transfer.id }))
     }
 
     function handleDragStart(e: React.DragEvent) {
@@ -307,28 +295,13 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
     }
 
     return (
-        <div className={`glow-wrap relative${isSelected ? ' active' : ''}`} data-transfer-id={transfer.id}
+        <div className={`glow-wrap${isSelected ? ' active' : ''}`} data-transfer-id={transfer.id}
              style={{ borderRadius: RADIUS }}
              title={transfer.type === 'file' ? transfer.content : undefined}
              draggable={!editing}
              onDragStart={handleDragStart}
              onContextMenu={handleContextMenu}>
             {content}
-            {!editing && (
-                <button
-                    type="button"
-                    aria-label="Preview"
-                    title="Preview"
-                    onClick={(e) => {
-                        e.stopPropagation()
-                        window.dispatchEvent(new CustomEvent('shelf:preview', { detail: transfer.id }))
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className="absolute top-2 right-2 z-10 p-1 rounded text-text-muted opacity-25 hover:opacity-100 hover:text-text transition-opacity cursor-pointer"
-                >
-                    <LuEye size={14} />
-                </button>
-            )}
         </div>
     )
 }

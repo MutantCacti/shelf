@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { LuDownload, LuX, LuFile, LuClipboard, LuCheck } from 'react-icons/lu'
 import { Transfer } from '../types/types'
 import useTransferStore from '../stores/TransferStore'
@@ -27,6 +27,119 @@ function formatSize(bytes: number | null) {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
+function ImageViewer({ src, alt }: { src: string, alt: string }) {
+    const containerRef = useRef<HTMLDivElement>(null)
+    const imgRef = useRef<HTMLImageElement>(null)
+    const [scale, setScale] = useState(1)
+    const [pos, setPos] = useState({ x: 0, y: 0 })
+    const [dragging, setDragging] = useState(false)
+    const dragStart = useRef<{ mouseX: number, mouseY: number, posX: number, posY: number } | null>(null)
+    const scaleRef = useRef(scale)
+    const posRef = useRef(pos)
+    scaleRef.current = scale
+    posRef.current = pos
+
+    // Clamp pan offset so the image edges never leave the viewer.
+    function clampPos(s: number, x: number, y: number): { x: number, y: number } {
+        const container = containerRef.current
+        const img = imgRef.current
+        if (!container || !img || !img.naturalWidth || !img.naturalHeight) {
+            return { x, y }
+        }
+        const vw = container.clientWidth
+        const vh = container.clientHeight
+        // object-contain rendered size at scale 1
+        const fitRatio = Math.min(vw / img.naturalWidth, vh / img.naturalHeight)
+        const renderedW = img.naturalWidth * fitRatio
+        const renderedH = img.naturalHeight * fitRatio
+        const maxX = Math.max(0, (renderedW * s - vw) / 2)
+        const maxY = Math.max(0, (renderedH * s - vh) / 2)
+        return {
+            x: Math.max(-maxX, Math.min(maxX, x)),
+            y: Math.max(-maxY, Math.min(maxY, y)),
+        }
+    }
+
+    // Ctrl+wheel zoom — attach as non-passive so preventDefault works
+    useEffect(() => {
+        const el = containerRef.current
+        if (!el) return
+        function onWheel(e: WheelEvent) {
+            if (!e.ctrlKey) return
+            e.preventDefault()
+            const rect = el!.getBoundingClientRect()
+            const cx = e.clientX - rect.left - rect.width / 2
+            const cy = e.clientY - rect.top - rect.height / 2
+            const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+            const s = scaleRef.current
+            const p = posRef.current
+            const newScale = Math.max(1, Math.min(8, s * factor))
+            if (newScale === s) return
+            const ratio = newScale / s
+            setScale(newScale)
+            if (newScale === 1) {
+                setPos({ x: 0, y: 0 })
+            } else {
+                const rawX = cx - (cx - p.x) * ratio
+                const rawY = cy - (cy - p.y) * ratio
+                setPos(clampPos(newScale, rawX, rawY))
+            }
+        }
+        el.addEventListener('wheel', onWheel, { passive: false })
+        return () => el.removeEventListener('wheel', onWheel)
+    }, [])
+
+    function handleMouseDown(e: React.MouseEvent) {
+        if (scale <= 1) return
+        e.preventDefault()
+        dragStart.current = { mouseX: e.clientX, mouseY: e.clientY, posX: pos.x, posY: pos.y }
+        setDragging(true)
+    }
+
+    useEffect(() => {
+        if (!dragging) return
+        function onMove(e: MouseEvent) {
+            if (!dragStart.current) return
+            const rawX = dragStart.current.posX + (e.clientX - dragStart.current.mouseX)
+            const rawY = dragStart.current.posY + (e.clientY - dragStart.current.mouseY)
+            setPos(clampPos(scaleRef.current, rawX, rawY))
+        }
+        function onUp() {
+            dragStart.current = null
+            setDragging(false)
+        }
+        window.addEventListener('mousemove', onMove)
+        window.addEventListener('mouseup', onUp)
+        return () => {
+            window.removeEventListener('mousemove', onMove)
+            window.removeEventListener('mouseup', onUp)
+        }
+    }, [dragging])
+
+    const cursorClass = scale > 1 ? (dragging ? 'cursor-grabbing' : 'cursor-grab') : ''
+
+    return (
+        <div
+            ref={containerRef}
+            className={`relative overflow-hidden flex items-center justify-center w-full max-h-[70vh] rounded-lg ${cursorClass}`}
+            onMouseDown={handleMouseDown}
+        >
+            <img
+                ref={imgRef}
+                src={src}
+                alt={alt}
+                draggable={false}
+                className="max-w-full max-h-[70vh] object-contain select-none"
+                style={{
+                    transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`,
+                    transition: dragging ? 'none' : 'transform 0.1s',
+                    transformOrigin: 'center',
+                }}
+            />
+        </div>
+    )
+}
+
 interface PreviewModalProps {
     transfer: Transfer
     onClose: () => void
@@ -37,6 +150,7 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
     const [textContent, setTextContent] = useState<string | null>(null)
     const [textError, setTextError] = useState<string | null>(null)
     const [copied, setCopied] = useState(false)
+    const mouseDownOnBackdrop = useRef(false)
     const download = useTransferStore(s => s.download)
 
     function copyTextContent() {
@@ -72,7 +186,7 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
             return
         }
         let cancelled = false
-        fetch(`/api/transfers/${transfer.id}/download`, { credentials: 'include' })
+        fetch(`/api/transfers/${transfer.id}/download?v=${transfer.created_at}&inline=1`, { credentials: 'include' })
             .then(res => {
                 if (!res.ok) throw new Error(res.statusText)
                 return res.text()
@@ -80,7 +194,7 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
             .then(text => { if (!cancelled) setTextContent(text) })
             .catch(e => { if (!cancelled) setTextError(e.message || 'Failed to load preview') })
         return () => { cancelled = true }
-    }, [isText, transfer.id, transfer.size])
+    }, [isText, transfer.id, transfer.size, transfer.created_at])
 
     let body: React.ReactNode
     if (transfer.type === 'text') {
@@ -91,16 +205,15 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
         )
     } else if (IMAGE_EXTS.has(ext)) {
         body = (
-            <img
-                src={`/api/transfers/${transfer.id}/download`}
+            <ImageViewer
+                src={`/api/transfers/${transfer.id}/download?v=${transfer.created_at}&inline=1`}
                 alt={transfer.content}
-                className="max-w-full max-h-[70vh] object-contain mx-auto rounded-lg"
             />
         )
     } else if (ext === 'pdf') {
         body = (
             <iframe
-                src={`/api/transfers/${transfer.id}/download`}
+                src={`/api/transfers/${transfer.id}/download?v=${transfer.created_at}&inline=1`}
                 title={transfer.content}
                 className="w-full h-[70vh] rounded-lg bg-bg"
             />
@@ -108,7 +221,7 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
     } else if (VIDEO_EXTS.has(ext)) {
         body = (
             <video
-                src={`/api/transfers/${transfer.id}/download`}
+                src={`/api/transfers/${transfer.id}/download?v=${transfer.created_at}&inline=1`}
                 controls
                 className="max-w-full max-h-[70vh] mx-auto rounded-lg"
             />
@@ -116,7 +229,7 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
     } else if (AUDIO_EXTS.has(ext)) {
         body = (
             <audio
-                src={`/api/transfers/${transfer.id}/download`}
+                src={`/api/transfers/${transfer.id}/download?v=${transfer.created_at}&inline=1`}
                 controls
                 className="w-full mt-8"
             />
@@ -147,10 +260,14 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
             data-testid="preview-modal"
             className="fixed inset-0 z-50 flex items-center justify-center transition-all duration-150 px-4"
             style={{ backgroundColor: visible ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0)' }}
-            onClick={dismiss}
+            onMouseDown={(e) => { mouseDownOnBackdrop.current = e.target === e.currentTarget }}
+            onClick={(e) => {
+                if (mouseDownOnBackdrop.current && e.target === e.currentTarget) dismiss()
+                mouseDownOnBackdrop.current = false
+            }}
         >
             <div
-                className="bg-surface border border-border rounded-xl max-w-4xl max-h-[90vh] flex flex-col transition-all duration-150"
+                className={`bg-surface border border-border rounded-xl ${ext === 'pdf' ? 'w-full' : ''} max-w-2xl max-h-[90vh] flex flex-col transition-all duration-150`}
                 style={{
                     opacity: visible ? 1 : 0,
                     transform: visible ? 'scale(1)' : 'scale(0.95)',

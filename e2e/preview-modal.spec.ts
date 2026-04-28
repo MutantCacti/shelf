@@ -23,14 +23,14 @@ test.describe("preview modal", () => {
         await page.getByTestId("transfer-grid").waitFor()
     })
 
-    test("preview a file via eye icon then close with Escape", async ({ page }) => {
+    test("preview a file via double-click then close with Escape", async ({ page }) => {
         const fileInput = page.locator("#upload-input").first()
         await fileInput.setInputFiles(tmpFile)
 
         const item = page.locator("[data-transfer-id]").first()
         await expect(item).toContainText("shelf-e2e-preview.txt")
 
-        await item.getByLabel("Preview").click()
+        await item.dblclick()
 
         const modal = page.getByTestId("preview-modal")
         await expect(modal).toBeVisible()

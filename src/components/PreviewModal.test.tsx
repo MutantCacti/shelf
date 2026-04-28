@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PreviewModal from './PreviewModal'
@@ -29,7 +29,21 @@ const textTransfer: Transfer = {
     size: null,
 }
 
+const pdfTransfer: Transfer = {
+    id: 5,
+    type: 'file',
+    content: 'doc.pdf',
+    created_at: '2026-01-01T00:00:00Z',
+    size: 10000,
+}
+
 describe('PreviewModal', () => {
+    let originalDownload: (id: number) => void
+
+    beforeAll(() => {
+        originalDownload = useTransferStore.getState().download
+    })
+
     beforeEach(() => {
         vi.useFakeTimers({ shouldAdvanceTime: true })
         useTransferStore.setState({ download: vi.fn() } as any)
@@ -48,6 +62,41 @@ describe('PreviewModal', () => {
         render(<PreviewModal transfer={imageTransfer} onClose={vi.fn()} />)
         const img = screen.getByAltText('photo.jpg') as HTMLImageElement
         expect(img.src).toContain('/api/transfers/1/download')
+    })
+
+    it('PDF preview URL uses inline=1 and Download button URL does not', async () => {
+        useTransferStore.setState({ transfers: [pdfTransfer], download: originalDownload } as any)
+
+        const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+
+        render(<PreviewModal transfer={pdfTransfer} onClose={vi.fn()} />)
+
+        const iframe = screen.getByTitle('doc.pdf') as HTMLIFrameElement
+        expect(iframe.src).toContain('inline=1')
+
+        await userEvent.click(screen.getByLabelText('Download'))
+
+        const url = open.mock.calls[0][0] as string
+        expect(url).toContain('/api/transfers/5/download')
+        expect(url).not.toContain('inline=1')
+
+        open.mockRestore()
+    })
+
+    it('cache-busts the download URL with created_at', () => {
+        const a: Transfer = { ...imageTransfer, id: 7, created_at: '2026-01-01T00:00:00Z' }
+        const b: Transfer = { ...imageTransfer, id: 7, created_at: '2026-04-27T12:00:00Z' }
+
+        const { unmount } = render(<PreviewModal transfer={a} onClose={vi.fn()} />)
+        const srcA = (screen.getByAltText('photo.jpg') as HTMLImageElement).src
+        unmount()
+
+        render(<PreviewModal transfer={b} onClose={vi.fn()} />)
+        const srcB = (screen.getByAltText('photo.jpg') as HTMLImageElement).src
+
+        expect(srcA).toContain('/api/transfers/7/download?v=')
+        expect(srcB).toContain('/api/transfers/7/download?v=')
+        expect(srcA).not.toBe(srcB)
     })
 
     it('renders a no-preview fallback for unsupported file types', () => {

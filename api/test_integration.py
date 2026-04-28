@@ -118,7 +118,7 @@ def test_file_lifecycle(client):
     resp = client.get(f"/transfers/{transfer_id}/download")
     assert resp.status_code == 200
     assert resp.content == content
-    assert resp.headers["cache-control"] == "no-cache"
+    assert resp.headers["cache-control"] == "no-store"
 
     # File exists on disk
     user_dir = list(client._transfers_dir.iterdir())[0]

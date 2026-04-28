@@ -19,7 +19,7 @@ export default function Hero() {
                 </a>
             </div>
             <p className="text-xs text-text-muted">
-                A simple online transfer tool
+                A website for sending things to yourself
             </p>
         </div>
     )

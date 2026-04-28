@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 
+.claude-code-history/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -29,3 +31,6 @@ __pycache__/
 *.egg-info/
 api/.venv/
 api/data/
+
+# HTTPS dev certs
+certs/

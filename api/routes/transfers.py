@@ -24,6 +24,28 @@ MAX_FILE_SIZE = 1024 * 1024 * 1024  # 1GB per file
 MAX_USER_STORAGE = 1024 * 1024 * 1024  # 1GB total per user
 STREAM_CHUNK_SIZE = 64 * 1024  # 64KB
 
+INLINE_SAFE_PREFIXES = ("image/", "video/", "audio/")
+INLINE_SAFE_EXACT = frozenset({"application/pdf", "text/plain"})
+# Types that would match a safe prefix but execute scripts/XSLT when rendered
+# inline. SVG is the canonical example: image/* but with a script DOM. XHTML
+# and XML/XSLT are similar surface in the application/ and text/ namespaces.
+# Listed explicitly so the allowlist can't widen them by accident.
+INLINE_BLOCKED_EXACT = frozenset({
+    "image/svg+xml",
+    "application/xhtml+xml",
+    "application/xml",
+    "text/xml",
+})
+
+
+def _is_inline_safe(mime: str) -> bool:
+    """Whether a mime type is safe to serve with Content-Disposition: inline."""
+    if mime in INLINE_BLOCKED_EXACT:
+        return False
+    if mime in INLINE_SAFE_EXACT:
+        return True
+    return any(mime.startswith(p) for p in INLINE_SAFE_PREFIXES)
+
 
 def user_storage_bytes(user_id: int) -> int:
     """Total bytes used by a user's file transfers on disk."""
@@ -226,10 +248,11 @@ async def batch_delete_transfers(
         db.close()
 
 
-@get("/{transfer_id:int}/download")
+@get("/{transfer_id:int}/download", cache_control=CacheControlHeader(no_store=True))
 async def download_transfer(
     transfer_id: int,
     request: Request[Any, Any, Any],
+    inline: bool = False,
 ) -> Response | File:
     """Download a transfer owned by the current user."""
     user_id = require_auth(request)
@@ -242,8 +265,14 @@ async def download_transfer(
         if transfer is None:
             raise NotFoundException(f"Transfer {transfer_id} not found")
 
+        headers = {"Vary": "Cookie", "X-Content-Type-Options": "nosniff"}
+
         if transfer.type == "text":
-            return Response(content=transfer.content, media_type="text/plain")
+            # No Content-Disposition by default — browsers natively inline text/plain.
+            # ?inline=1 makes it explicit for symmetry with the file branch.
+            if inline:
+                headers["Content-Disposition"] = "inline"
+            return Response(content=transfer.content, media_type="text/plain", headers=headers)
 
         file_path = user_transfers_dir(user_id) / str(transfer.id)
         if not file_path.exists():
@@ -253,11 +282,14 @@ async def download_transfer(
         if mime_type is None:
             mime_type = "application/octet-stream"
 
+        effective_inline = inline and _is_inline_safe(mime_type)
+
         return File(
             path=file_path,
             filename=transfer.content,
             media_type=mime_type,
-            headers={"Cache-Control": "no-cache"},
+            content_disposition_type="inline" if effective_inline else "attachment",
+            headers=headers,
         )
     finally:
         db.close()
@@ -311,6 +343,7 @@ async def batch_download_transfers(
         media_type="application/zip",
         headers={
             "Content-Disposition": 'attachment; filename="transfers.zip"',
+            "X-Content-Type-Options": "nosniff",
         },
     )
 
@@ -379,7 +412,7 @@ async def thumbnail_transfer(
         return File(
             path=thumb_path,
             media_type="image/webp",
-            headers={"Cache-Control": "no-cache"},
+            headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"},
         )
 
     # Generate on demand (first request for pre-existing transfers)
@@ -404,7 +437,7 @@ async def thumbnail_transfer(
         return File(
             path=thumb_path,
             media_type="image/webp",
-            headers={"Cache-Control": "no-cache"},
+            headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"},
         )
     finally:
         db.close()

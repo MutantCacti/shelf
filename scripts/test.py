@@ -133,8 +133,12 @@ def test_e2e(extra_args: list[str] | None = None) -> bool:
 
     try:
         cmd = [get_npm_cmd(), "run", "test:e2e"]
-        if extra_args:
-            cmd += ["--", *extra_args]
+        playwright_args = list(extra_args or [])
+        is_headed = "--headed" in playwright_args
+        if not is_headed and not any(a.startswith("--workers") for a in playwright_args):
+            playwright_args.append("--workers=6")
+        if playwright_args:
+            cmd += ["--", *playwright_args]
         result = run(cmd, cwd=ROOT, check=False)
         return result.returncode == 0
     finally:
@@ -165,7 +169,7 @@ def main() -> None:
         suites.append((LABELS["api"], "UNIT", test_api_unit))
         suites.append((LABELS["frontend"], "UNIT", test_frontend_unit))
     if run_e2e:
-        suites.append((LABELS["frontend"], "E2E", lambda: test_e2e(extra_args)))
+        suites.append(("E2E", "E2E", lambda: test_e2e(extra_args)))
 
     results = []
     for label, kind, fn in suites:

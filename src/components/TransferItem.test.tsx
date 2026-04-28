@@ -77,48 +77,67 @@ describe('TransferItem', () => {
     })
 
 
-    it('double-click on text copies to clipboard', async () => {
-        const writeText = vi.fn().mockResolvedValue(undefined)
-        Object.assign(navigator, { clipboard: { writeText } })
+    it('double-click on text dispatches shelf:preview', async () => {
+        useTransferStore.setState({ transfers: [textTransfer] })
+
+        const onPreview = vi.fn()
+        window.addEventListener('shelf:preview', onPreview)
 
         const { container } = render(<TransferItem transfer={textTransfer} />)
         const btn = container.querySelector('button')!
-
         await userEvent.dblClick(btn)
-        expect(writeText).toHaveBeenCalledWith('Hello world')
+
+        expect(onPreview).toHaveBeenCalledOnce()
+        expect((onPreview.mock.calls[0][0] as CustomEvent).detail).toBe(textTransfer.id)
+
+        window.removeEventListener('shelf:preview', onPreview)
     })
 
 
-    it('double-click on file triggers download', async () => {
-        const downloadFn = vi.fn()
-        useTransferStore.setState({
-            transfers: [fileTransfer],
-        })
-        const original = useTransferStore.getState().download
-        useTransferStore.setState({ download: downloadFn } as any)
+    it('double-click on file dispatches shelf:preview', async () => {
+        useTransferStore.setState({ transfers: [fileTransfer] })
+
+        const onPreview = vi.fn()
+        window.addEventListener('shelf:preview', onPreview)
 
         const { container } = render(<TransferItem transfer={fileTransfer} />)
         const btn = container.querySelector('button')!
         await userEvent.dblClick(btn)
 
-        expect(downloadFn).toHaveBeenCalledWith(fileTransfer.id)
+        expect(onPreview).toHaveBeenCalledOnce()
+        expect((onPreview.mock.calls[0][0] as CustomEvent).detail).toBe(fileTransfer.id)
 
-        useTransferStore.setState({ download: original } as any)
+        window.removeEventListener('shelf:preview', onPreview)
+    })
+
+    it('double-click leaves an unselected item unselected', async () => {
+        useTransferStore.setState({ transfers: [fileTransfer], selected: [] })
+
+        const { container } = render(<TransferItem transfer={fileTransfer} />)
+        const btn = container.querySelector('button')!
+        await userEvent.dblClick(btn)
+
+        expect(useTransferStore.getState().selected).not.toContain(fileTransfer.id)
+    })
+
+    it('double-click leaves an already-selected item selected', async () => {
+        useTransferStore.setState({ transfers: [fileTransfer], selected: [fileTransfer.id] })
+
+        const { container } = render(<TransferItem transfer={fileTransfer} />)
+        const btn = container.querySelector('button')!
+        await userEvent.dblClick(btn)
+
+        expect(useTransferStore.getState().selected).toContain(fileTransfer.id)
     })
 
 
     it('click toggles selection', () => {
-        vi.useFakeTimers()
         const { container } = render(<TransferItem transfer={textTransfer} />)
         const btn = container.querySelector('button')!
 
         fireEvent.click(btn)
-        // The click handler debounces via window.setTimeout(50ms)
-        act(() => { vi.advanceTimersByTime(100) })
 
         expect(useTransferStore.getState().selected).toContain(textTransfer.id)
-
-        vi.useRealTimers()
     })
 
 
@@ -142,19 +161,6 @@ describe('TransferItem', () => {
         expect(container.querySelector('[data-transfer-id="1"]')).toBeInTheDocument()
     })
 
-
-    it('shows Copied feedback after double-click on text', async () => {
-        const writeText = vi.fn().mockResolvedValue(undefined)
-        vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
-
-        const { container } = render(<TransferItem transfer={textTransfer} />)
-        const btn = container.querySelector('button')!
-
-        await userEvent.dblClick(btn)
-        expect(screen.getByText('Copied')).toBeInTheDocument()
-
-        vi.unstubAllGlobals()
-    })
 
     it('Copied feedback disappears after timeout', () => {
         vi.useFakeTimers({ shouldAdvanceTime: true })

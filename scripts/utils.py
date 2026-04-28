@@ -61,6 +61,15 @@ def is_test_mode() -> bool:
     return os.environ.get("SHELF_TEST") == "1"
 
 
+def https_enabled() -> bool:
+    """HTTPS is on when certs exist and we're not in test mode."""
+    if is_test_mode():
+        return False
+    cert = ROOT / "certs" / "cert.pem"
+    key = ROOT / "certs" / "key.pem"
+    return cert.exists() and key.exists()
+
+
 def get_ports() -> dict[str, int]:
     """Return port config for current mode."""
     return TEST_PORTS if is_test_mode() else PORTS

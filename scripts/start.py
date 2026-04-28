@@ -7,7 +7,7 @@ import subprocess
 from typing import BinaryIO
 
 from .utils import (
-    ROOT, API, LABELS, load_dotenv, is_test_mode, get_ports, get_api_env,
+    ROOT, API, LABELS, load_dotenv, is_test_mode, https_enabled, get_ports, get_api_env,
     get_venv_python, get_npm_cmd, fix_cmd, wait_for_service,
     TEST_PASSWORD,
 )
@@ -55,9 +55,14 @@ def start_api() -> subprocess.Popen:
     """Start uvicorn API server."""
     python = get_venv_python(API / ".venv")
     ports = get_ports()
+    cmd = [str(python), "-m", "uvicorn", "main:app",
+           "--host", "127.0.0.1", "--port", str(ports["api"])]
+    if https_enabled():
+        cert = ROOT / "certs" / "cert.pem"
+        key = ROOT / "certs" / "key.pem"
+        cmd += ["--ssl-certfile", str(cert), "--ssl-keyfile", str(key)]
     return start_service(
-        cmd=[str(python), "-m", "uvicorn", "main:app",
-             "--host", "127.0.0.1", "--port", str(ports["api"])],
+        cmd=cmd,
         cwd=API,
         prefix=LABELS["api"],
         env=get_api_env(),
@@ -70,13 +75,16 @@ def start_frontend() -> subprocess.Popen:
     api_port = ports["api"]
     frontend_port = ports["frontend"]
 
+    env = {"VITE_API_PORT": str(api_port)}
+    if https_enabled():
+        env["VITE_HTTPS"] = "1"
     return start_service(
         cmd=[get_npm_cmd(), "run", "dev", "--",
              "--port", str(frontend_port),
              "--strictPort"],
         cwd=ROOT,
         prefix=LABELS["frontend"],
-        env={"VITE_API_PORT": str(api_port)},
+        env=env,
     )
 
 
@@ -107,7 +115,8 @@ def main() -> None:
 
     ports = get_ports()
     mode = "test" if is_test_mode() else "dev"
-    print(f"Starting Shelf ({mode} mode)...")
+    https_suffix = ", HTTPS" if https_enabled() else ""
+    print(f"Starting Shelf ({mode} mode{https_suffix})...")
 
     if is_test_mode():
         seed_test_user()

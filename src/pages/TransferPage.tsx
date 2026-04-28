@@ -1,17 +1,21 @@
 import { useEffect, useCallback, useState } from 'react'
 import TransferGrid from '../components/TransferGrid'
 import ConfirmModal from '../components/ConfirmModal'
+import PreviewModal from '../components/PreviewModal'
 import useTransferStore from '../stores/TransferStore'
 import useAuthStore from '../stores/AuthStore'
 import ToastContainer from '../components/Toast'
 
 export default function TransferPage({ onHelp }: { onHelp: () => void }) {
-    const { batchRemove, clearSelection } = useTransferStore()
+    const { batchRemove, clearSelection, transfers } = useTransferStore()
     const [showConfirm, setShowConfirm] = useState(false)
+    const [previewId, setPreviewId] = useState<number | null>(null)
 
     const [deleteTargets, setDeleteTargets] = useState<number[]>([])
 
     const { uploadFile, createText } = useTransferStore()
+
+    const previewTransfer = previewId != null ? transfers.find(t => t.id === previewId) ?? null : null
 
     function nudgeDuplicate(id: number) {
         const el = document.querySelector(`[data-transfer-id="${id}"]`)
@@ -39,7 +43,7 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
     }, [uploadFile, createText])
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if (showConfirm) return
+        if (showConfirm || previewId != null) return
         if (e.key === 'F5' || (e.key === 'r' && (e.ctrlKey || e.metaKey))) {
             e.preventDefault()
             useTransferStore.getState().fetch()
@@ -118,7 +122,7 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
             clearSelection()
             document.getElementById('text-input')?.focus()
         }
-    }, [showConfirm])
+    }, [showConfirm, previewId])
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown)
@@ -128,6 +132,14 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
             window.removeEventListener('paste', handlePaste)
         }
     }, [handleKeyDown, handlePaste])
+
+    useEffect(() => {
+        function onPreview(e: Event) {
+            setPreviewId((e as CustomEvent).detail)
+        }
+        window.addEventListener('shelf:preview', onPreview)
+        return () => window.removeEventListener('shelf:preview', onPreview)
+    }, [])
 
     function handleConfirm() {
         batchRemove(deleteTargets)
@@ -151,6 +163,12 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
                     message={deleteTargets.length === 1 ? 'Delete this item?' : `Delete ${deleteTargets.length} items?`}
                     onConfirm={handleConfirm}
                     onCancel={() => setShowConfirm(false)}
+                />
+            )}
+            {previewTransfer && (
+                <PreviewModal
+                    transfer={previewTransfer}
+                    onClose={() => setPreviewId(null)}
                 />
             )}
         </div>

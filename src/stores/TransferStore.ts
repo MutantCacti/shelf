@@ -38,15 +38,15 @@ async function api(path: string, init?: RequestInit) {
 }
 
 function formatBytes(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024) return `${bytes} bytes`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(0)} MB`
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(0)} GB`
 }
 
 function getStatusText(usage: { used: number; limit: number } | null): string {
-    if (usage) return formatBytes(usage.used)
-    return ''
+    if (!usage || usage.limit === 0) return ''
+    return `${formatBytes(Math.max(0, usage.limit - usage.used))} free`
 }
 
 // Atomic inflight helpers to avoid race conditions
@@ -88,7 +88,7 @@ const useTransferStore = create<TransferStore>((set, get) => ({
     activity: '',
     ready: false,
     error: null,
-    statusText: 'try help',
+    statusText: 'try ?',
     usage: null,
     selected: [],
 

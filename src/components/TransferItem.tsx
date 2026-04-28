@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import {
-    LuClipboard, LuImage, LuFileText, LuFileCode, LuFileTerminal,
+    LuImage, LuFileText, LuFileCode, LuFileTerminal,
     LuFileArchive, LuFile, LuCheck, LuFileAudio, LuFileVideo,
-    LuFileSpreadsheet, LuBraces, LuPresentation,
+    LuFileSpreadsheet, LuBraces, LuPresentation, LuClipboard,
 } from 'react-icons/lu'
 import { Transfer } from '../types/types'
 import useTransferStore from '../stores/TransferStore'
@@ -104,7 +104,6 @@ function ImageItem({ transfer, dim, onClick, onDoubleClick }: {
                     WebkitMaskImage: 'linear-gradient(to top, transparent, black 60%)',
                 }}
             />
-            <LuImage size={14} className="absolute top-2 right-2 text-text opacity-30 group-hover:opacity-70 transition-opacity" />
             <span className="absolute bottom-0 inset-x-0 text-xs text-text truncate text-center px-1 py-1">
                 {getLabel(transfer)}
             </span>
@@ -129,15 +128,12 @@ function TextItem({ transfer, dim, iconSize, copied, onClick, onDoubleClick }: {
                     <span className="text-xs text-accent-light">Copied</span>
                 </span>
             ) : (
-                <>
-                    <span
-                        className="text-xs text-text text-left w-full h-full p-3 overflow-hidden wrap-break-word leading-relaxed"
-                        style={{ maskImage: 'linear-gradient(to bottom, black calc(80% - 1.5rem), transparent 100%)' }}
-                    >
-                        {transfer.content}
-                    </span>
-                    <LuClipboard size={12} className="absolute top-2 right-2 text-text-muted opacity-25 group-hover:opacity-60 transition-opacity" />
-                </>
+                <span
+                    className="text-xs text-text text-left w-full h-full p-3 overflow-hidden wrap-break-word leading-relaxed"
+                    style={{ maskImage: 'linear-gradient(to bottom, black calc(80% - 1.5rem), transparent 100%)' }}
+                >
+                    {transfer.content}
+                </span>
             )}
         </button>
     )
@@ -217,14 +213,14 @@ interface TransferItemProps {
 }
 
 export default function TransferItem({ transfer, size = 100, editing, onStartEdit, onCommitEdit, onCancelEdit }: TransferItemProps) {
-    const { selected, toggleSelect, download } = useTransferStore()
+    const { selected, toggleSelect } = useTransferStore()
     const [copied, setCopied] = useState(false)
     const [editValue, setEditValue] = useState(transfer.content)
     const editRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
     const isSelected = selected.includes(transfer.id)
     const iconSize = Math.round(size * 0.4)
+    const fileIconSize = Math.round(size * 0.25)
     const dim = `${size}px`
-    const clickTimer = useRef<number | null>(null)
 
     function copyText() {
         navigator.clipboard.writeText(transfer.content)
@@ -265,22 +261,11 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
     }, [transfer.id])
 
     function handleClick() {
-        clickTimer.current = window.setTimeout(() => {
-            toggleSelect(transfer.id)
-            clickTimer.current = null
-        }, 50)
+        toggleSelect(transfer.id)
     }
 
     function handleDoubleClick() {
-        if (clickTimer.current != null) {
-            clearTimeout(clickTimer.current)
-            clickTimer.current = null
-        }
-        if (transfer.type === 'text') {
-            copyText()
-        } else {
-            download(transfer.id)
-        }
+        window.dispatchEvent(new CustomEvent('shelf:preview', { detail: transfer.id }))
     }
 
     function handleDragStart(e: React.DragEvent) {
@@ -305,7 +290,7 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
         content = <TextItem transfer={transfer} dim={dim} iconSize={iconSize} copied={copied}
                             onClick={handleClick} onDoubleClick={handleDoubleClick} />
     } else {
-        content = <FileItem transfer={transfer} dim={dim} iconSize={iconSize}
+        content = <FileItem transfer={transfer} dim={dim} iconSize={fileIconSize}
                             onClick={handleClick} onDoubleClick={handleDoubleClick} />
     }
 

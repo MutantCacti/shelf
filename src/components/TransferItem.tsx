@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
     LuImage, LuFileText, LuFileCode, LuFileTerminal,
     LuFileArchive, LuFile, LuCheck, LuFileAudio, LuFileVideo,
@@ -161,62 +161,16 @@ function FileItem({ transfer, dim, iconSize, onClick, onDoubleClick }: {
     )
 }
 
-function EditItem({ transfer, dim, editValue, setEditValue, editRef, onKeyDown, onCommitEdit, onCancelEdit }: {
-    transfer: Transfer, dim: string,
-    editValue: string, setEditValue: (v: string) => void,
-    editRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>,
-    onKeyDown: (e: React.KeyboardEvent) => void,
-    onCommitEdit?: (v: string) => void, onCancelEdit?: () => void,
-}) {
-    function handleBlur() {
-        const trimmed = editValue.trim()
-        if (trimmed) onCommitEdit?.(trimmed)
-        else onCancelEdit?.()
-    }
-
-    return (
-        <div className="relative flex items-center justify-center bg-surface border border-accent/40"
-             style={{ width: dim, height: dim, borderRadius: RADIUS }}>
-            {transfer.type === 'text' ? (
-                <textarea
-                    ref={editRef as React.RefObject<HTMLTextAreaElement>}
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
-                    onKeyDown={onKeyDown}
-                    onBlur={handleBlur}
-                    className="w-full h-full p-3 text-xs text-text bg-transparent resize-none outline-none"
-                />
-            ) : (
-                <input
-                    ref={editRef as React.RefObject<HTMLInputElement>}
-                    type="text"
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
-                    onKeyDown={onKeyDown}
-                    onBlur={handleBlur}
-                    className="w-full px-3 text-xs text-text text-center bg-transparent outline-none"
-                />
-            )}
-        </div>
-    )
-}
-
 // --- Main component ---
 
 interface TransferItemProps {
     transfer: Transfer
     size?: number
-    editing?: boolean
-    onStartEdit?: () => void
-    onCommitEdit?: (newContent: string) => void
-    onCancelEdit?: () => void
 }
 
-export default function TransferItem({ transfer, size = 100, editing, onStartEdit, onCommitEdit, onCancelEdit }: TransferItemProps) {
-    const { selected, toggleSelect } = useTransferStore()
+export default function TransferItem({ transfer, size = 100 }: TransferItemProps) {
+    const { selected, toggleSelect, download } = useTransferStore()
     const [copied, setCopied] = useState(false)
-    const [editValue, setEditValue] = useState(transfer.content)
-    const editRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
     const isSelected = selected.includes(transfer.id)
     const iconSize = Math.round(size * 0.4)
     const fileIconSize = Math.round(size * 0.25)
@@ -226,30 +180,6 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
         navigator.clipboard.writeText(transfer.content)
         setCopied(true)
         setTimeout(() => setCopied(false), 1200)
-    }
-
-    useEffect(() => {
-        if (editing && editRef.current) {
-            setEditValue(transfer.content)
-            editRef.current.focus()
-            editRef.current.select()
-        }
-    }, [editing])
-
-    function handleContextMenu(e: React.MouseEvent) {
-        e.preventDefault()
-        onStartEdit?.()
-    }
-
-    function handleEditKeyDown(e: React.KeyboardEvent) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault()
-            const trimmed = editValue.trim()
-            if (trimmed) onCommitEdit?.(trimmed)
-        } else if (e.key === 'Escape') {
-            onCancelEdit?.()
-        }
-        e.stopPropagation()
     }
 
     useEffect(() => {
@@ -268,6 +198,12 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
         window.dispatchEvent(new CustomEvent('shelf:preview', { detail: transfer.id }))
     }
 
+    function handleContextMenu(e: React.MouseEvent) {
+        e.preventDefault()
+        if (transfer.type === 'text') copyText()
+        else download(transfer.id)
+    }
+
     function handleDragStart(e: React.DragEvent) {
         if (transfer.type === 'text') {
             e.dataTransfer.setData('text/plain', transfer.content)
@@ -279,11 +215,7 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
     }
 
     let content
-    if (editing) {
-        content = <EditItem transfer={transfer} dim={dim} editValue={editValue}
-                            setEditValue={setEditValue} editRef={editRef}
-                            onKeyDown={handleEditKeyDown} onCommitEdit={onCommitEdit} onCancelEdit={onCancelEdit} />
-    } else if (isImage(transfer)) {
+    if (isImage(transfer)) {
         content = <ImageItem transfer={transfer} dim={dim}
                              onClick={handleClick} onDoubleClick={handleDoubleClick} />
     } else if (transfer.type === 'text') {
@@ -298,7 +230,7 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
         <div className={`glow-wrap${isSelected ? ' active' : ''}`} data-transfer-id={transfer.id}
              style={{ borderRadius: RADIUS }}
              title={transfer.type === 'file' ? transfer.content : undefined}
-             draggable={!editing}
+             draggable
              onDragStart={handleDragStart}
              onContextMenu={handleContextMenu}>
             {content}

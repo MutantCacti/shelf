@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import TransferGrid from './TransferGrid'
 import useTransferStore from '../stores/TransferStore'
 
@@ -74,26 +74,6 @@ describe('TransferGrid', () => {
         expect(uploadFile).toHaveBeenCalledTimes(2)
         expect(uploadFile).toHaveBeenCalledWith(file1)
         expect(uploadFile).toHaveBeenCalledWith(file2)
-    })
-
-    it('shelf:rename event triggers edit mode on the correct item', () => {
-        resetStore({
-            transfers: [
-                { id: 10, type: 'text', content: 'Editable text', created_at: '', size: null },
-                { id: 20, type: 'file', content: 'keep.txt', created_at: '', size: 100 },
-            ],
-        })
-
-        render(<TransferGrid onHelp={vi.fn()} onDelete={vi.fn()} />)
-
-        act(() => {
-            window.dispatchEvent(new CustomEvent('shelf:rename', { detail: 10 }))
-        })
-
-        // TransferBar also has a textbox, so query by tag
-        const textarea = document.querySelector('textarea')
-        expect(textarea).toBeInTheDocument()
-        expect(screen.getByText('keep.txt')).toBeInTheDocument()
     })
 
     it('calls fetch on mount', () => {

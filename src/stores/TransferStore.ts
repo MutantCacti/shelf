@@ -241,6 +241,10 @@ const useTransferStore = create<TransferStore>((set, get) => ({
 
     async rename(id: number, newContent: string) {
         inflightUp(set, 'Renaming')
+        const prev = get().transfers.find(t => t.id === id)
+        // Optimistic: surface the new content immediately so the modal/grid don't
+        // flash the old value during the PATCH round-trip.
+        set({ transfers: get().transfers.map(t => t.id === id ? { ...t, content: newContent } : t) })
         try {
             const res = await api(`/${id}`, {
                 method: 'PATCH',
@@ -251,6 +255,7 @@ const useTransferStore = create<TransferStore>((set, get) => ({
             set({ transfers: get().transfers.map(t => t.id === id ? updated : t) })
         } catch (e: any) {
             set({ error: e.message })
+            if (prev) set({ transfers: get().transfers.map(t => t.id === id ? prev : t) })
         } finally {
             inflightDown(set, get)
         }

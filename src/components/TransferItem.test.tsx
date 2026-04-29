@@ -208,72 +208,36 @@ describe('TransferItem', () => {
     })
 
 
-    it('context menu calls onStartEdit', () => {
-        const onStartEdit = vi.fn()
-        const { container } = render(
-            <TransferItem transfer={textTransfer} onStartEdit={onStartEdit} />
-        )
-        const wrapper = container.querySelector('.glow-wrap')!
-        fireEvent.contextMenu(wrapper)
-        expect(onStartEdit).toHaveBeenCalledOnce()
-    })
+    describe('right-click', () => {
+        it('right-click on text copies content', () => {
+            const writeText = vi.fn().mockResolvedValue(undefined)
+            vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
 
-    describe('edit mode', () => {
-        it('renders textarea for text transfer in edit mode', () => {
-            render(
-                <TransferItem transfer={textTransfer} editing onCommitEdit={vi.fn()} onCancelEdit={vi.fn()} />
-            )
-            const textarea = screen.getByRole('textbox')
-            expect(textarea.tagName).toBe('TEXTAREA')
+            const { container } = render(<TransferItem transfer={textTransfer} />)
+            const wrapper = container.querySelector('.glow-wrap')!
+            fireEvent.contextMenu(wrapper)
+
+            expect(writeText).toHaveBeenCalledWith('Hello world')
+            vi.unstubAllGlobals()
         })
 
-        it('renders input for file transfer in edit mode', () => {
-            render(
-                <TransferItem transfer={nonImageFile} editing onCommitEdit={vi.fn()} onCancelEdit={vi.fn()} />
-            )
-            const input = screen.getByRole('textbox')
-            expect(input.tagName).toBe('INPUT')
+        it('right-click on file calls store.download', () => {
+            const download = vi.fn()
+            useTransferStore.setState({ download } as any)
+
+            const { container } = render(<TransferItem transfer={fileTransfer} />)
+            const wrapper = container.querySelector('.glow-wrap')!
+            fireEvent.contextMenu(wrapper)
+
+            expect(download).toHaveBeenCalledWith(fileTransfer.id)
         })
 
-        it('Enter commits edit', async () => {
-            const onCommitEdit = vi.fn()
-            render(
-                <TransferItem transfer={textTransfer} editing onCommitEdit={onCommitEdit} onCancelEdit={vi.fn()} />
-            )
-            const textarea = screen.getByRole('textbox')
-            fireEvent.keyDown(textarea, { key: 'Enter' })
-            expect(onCommitEdit).toHaveBeenCalledWith('Hello world')
-        })
-
-        it('Escape cancels edit', async () => {
-            const onCancelEdit = vi.fn()
-            render(
-                <TransferItem transfer={textTransfer} editing onCommitEdit={vi.fn()} onCancelEdit={onCancelEdit} />
-            )
-            const textarea = screen.getByRole('textbox')
-            fireEvent.keyDown(textarea, { key: 'Escape' })
-            expect(onCancelEdit).toHaveBeenCalledOnce()
-        })
-
-        it('blur with content commits edit', () => {
-            const onCommitEdit = vi.fn()
-            render(
-                <TransferItem transfer={textTransfer} editing onCommitEdit={onCommitEdit} onCancelEdit={vi.fn()} />
-            )
-            const textarea = screen.getByRole('textbox')
-            fireEvent.blur(textarea)
-            expect(onCommitEdit).toHaveBeenCalledWith('Hello world')
-        })
-
-        it('blur with empty content cancels edit', () => {
-            const onCancelEdit = vi.fn()
-            const emptyTransfer = { ...textTransfer, content: '   ' }
-            render(
-                <TransferItem transfer={emptyTransfer} editing onCommitEdit={vi.fn()} onCancelEdit={onCancelEdit} />
-            )
-            const textarea = screen.getByRole('textbox')
-            fireEvent.blur(textarea)
-            expect(onCancelEdit).toHaveBeenCalledOnce()
+        it('right-click prevents the browser context menu', () => {
+            const { container } = render(<TransferItem transfer={fileTransfer} />)
+            const wrapper = container.querySelector('.glow-wrap')!
+            const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+            wrapper.dispatchEvent(event)
+            expect(event.defaultPrevented).toBe(true)
         })
     })
 
@@ -299,14 +263,6 @@ describe('TransferItem', () => {
                 'DownloadURL',
                 expect.stringContaining(`/api/transfers/${fileTransfer.id}/download`)
             )
-        })
-
-        it('is not draggable in edit mode', () => {
-            const { container } = render(
-                <TransferItem transfer={textTransfer} editing onCommitEdit={vi.fn()} onCancelEdit={vi.fn()} />
-            )
-            const wrapper = container.querySelector('.glow-wrap')!
-            expect(wrapper).toHaveAttribute('draggable', 'false')
         })
     })
 })

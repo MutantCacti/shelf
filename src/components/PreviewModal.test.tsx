@@ -170,4 +170,138 @@ describe('PreviewModal', () => {
 
         expect(writeText).toHaveBeenCalledWith('first line\nsecond line')
     })
+
+    describe('edit', () => {
+        it('renders an Edit pencil button when not editing', () => {
+            render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} />)
+            expect(screen.getByLabelText('Edit')).toBeInTheDocument()
+        })
+
+        it('clicking Edit swaps the file header to an input', async () => {
+            render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} />)
+            await userEvent.click(screen.getByLabelText('Edit'))
+            const input = screen.getByLabelText('Edit') as HTMLInputElement
+            expect(input.tagName).toBe('INPUT')
+            expect(input.value).toBe('archive.zip')
+        })
+
+        it('startInEdit opens directly in edit mode for files', () => {
+            render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} startInEdit />)
+            const input = screen.getByLabelText('Edit') as HTMLInputElement
+            expect(input.tagName).toBe('INPUT')
+        })
+
+        it('startInEdit opens directly in edit mode for text', () => {
+            render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} startInEdit />)
+            const editor = screen.getByLabelText('Edit')
+            expect(editor.tagName).toBe('DIV')
+            expect(editor.getAttribute('contenteditable')).toBe('true')
+        })
+
+        it('Save commits the new content via store.rename', async () => {
+            const rename = vi.fn()
+            useTransferStore.setState({ rename } as any)
+
+            render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} startInEdit />)
+            const input = screen.getByLabelText('Edit') as HTMLInputElement
+            await userEvent.clear(input)
+            await userEvent.type(input, 'renamed.zip')
+            await userEvent.click(screen.getByLabelText('Save'))
+
+            expect(rename).toHaveBeenCalledWith(archiveTransfer.id, 'renamed.zip')
+        })
+
+        it('Enter in the edit input commits via store.rename', async () => {
+            const rename = vi.fn()
+            useTransferStore.setState({ rename } as any)
+
+            render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} startInEdit />)
+            const input = screen.getByLabelText('Edit') as HTMLInputElement
+            await userEvent.clear(input)
+            await userEvent.type(input, 'renamed.zip{Enter}')
+
+            expect(rename).toHaveBeenCalledWith(archiveTransfer.id, 'renamed.zip')
+        })
+
+        it('Escape cancels edit without dismissing the modal', async () => {
+            const rename = vi.fn()
+            const onClose = vi.fn()
+            useTransferStore.setState({ rename } as any)
+
+            render(<PreviewModal transfer={archiveTransfer} onClose={onClose} startInEdit />)
+            fireEvent.keyDown(window, { key: 'Escape' })
+            vi.advanceTimersByTime(200)
+
+            expect(rename).not.toHaveBeenCalled()
+            expect(onClose).not.toHaveBeenCalled()
+            expect(screen.getByLabelText('Edit').tagName).toBe('BUTTON')
+        })
+
+        it('committing without a change does not call store.rename', async () => {
+            const rename = vi.fn()
+            useTransferStore.setState({ rename } as any)
+
+            render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} startInEdit />)
+            await userEvent.click(screen.getByLabelText('Save'))
+
+            expect(rename).not.toHaveBeenCalled()
+        })
+    })
+
+    describe('keybinds', () => {
+        it('E enters edit mode for a file', () => {
+            render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} />)
+            fireEvent.keyDown(window, { key: 'e' })
+            const input = screen.getByLabelText('Edit') as HTMLInputElement
+            expect(input.tagName).toBe('INPUT')
+        })
+
+        it('E enters edit mode for text', () => {
+            render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} />)
+            fireEvent.keyDown(window, { key: 'e' })
+            const editor = screen.getByLabelText('Edit')
+            expect(editor.getAttribute('contenteditable')).toBe('true')
+        })
+
+        it('typing e while editing does not re-trigger startEdit', () => {
+            render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} startInEdit />)
+            const editor = screen.getByLabelText('Edit')
+            const before = editor.outerHTML
+            fireEvent.keyDown(window, { key: 'e' })
+            expect(editor.outerHTML).toBe(before)
+        })
+
+        it('Enter copies content for text-type transfers', () => {
+            const writeText = vi.fn()
+            Object.defineProperty(navigator, 'clipboard', {
+                value: { writeText },
+                configurable: true,
+            })
+
+            render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} />)
+            fireEvent.keyDown(window, { key: 'Enter' })
+
+            expect(writeText).toHaveBeenCalledWith('first line\nsecond line')
+        })
+
+        it('Enter calls store.download for file-type transfers', () => {
+            const download = vi.fn()
+            useTransferStore.setState({ download } as any)
+
+            render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} />)
+            fireEvent.keyDown(window, { key: 'Enter' })
+
+            expect(download).toHaveBeenCalledWith(archiveTransfer.id)
+        })
+
+        it('Ctrl+Enter does not call store.download', () => {
+            const download = vi.fn()
+            useTransferStore.setState({ download } as any)
+
+            render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} />)
+            fireEvent.keyDown(window, { key: 'Enter', ctrlKey: true })
+
+            expect(download).not.toHaveBeenCalled()
+        })
+    })
 })

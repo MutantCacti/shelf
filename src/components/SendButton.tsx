@@ -42,7 +42,7 @@ export default function SendButton() {
         <button
             onMouseDown={e => { e.preventDefault(); handleSend() }}
             disabled={disabled}
-            className="text-text-muted hover:text-accent disabled:opacity-40 transition-all rounded-full cursor-pointer"
+            className="text-text-muted btn-matte hover:text-accent disabled:opacity-40 transition-all rounded-full p-1 cursor-pointer"
             title="Send text"
         >
             <LuSendHorizontal size={16} />

@@ -32,10 +32,12 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
     return (
         <>
             {/* Desktop */}
-            <div className="hidden sm:inline-flex items-center gap-3 select-none">
-                <LogoutButton />
-                <InfoButton onClick={onHelp} />
-                <div className="relative inline-flex items-center gap-2 px-1 py-1 rounded-full min-w-64
+            <div className="hidden sm:inline-flex items-center gap-3 select-none relative">
+                <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-3">
+                    <LogoutButton />
+                    <InfoButton onClick={onHelp} />
+                </div>
+                <div className="relative inline-flex items-center gap-1.5 px-1 py-1 rounded-full min-w-64
                                 bg-surface border border-border/30"
                      style={{ boxShadow: '0 0 20px 8px rgba(0, 0, 0, 0.2)' }}>
                     {error && (
@@ -47,10 +49,10 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
                     <DownloadButton />
                     <DeleteButton onDelete={onDelete} />
                 </div>
-                <div className="inline-flex items-center gap-3">
+                <div className="relative inline-flex items-center">
                     <button
                         onClick={() => fetch()}
-                        className={`cursor-pointer transition-all rounded-full hover-glow hover:-translate-y-0.5 focus-visible:-translate-y-0.5 ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
+                        className={`cursor-pointer transition-all rounded-full btn-matte p-1 hover:-translate-y-px focus-visible:-translate-y-px ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
                         title="Refresh"
                     >
                         <LogoSpinner
@@ -58,7 +60,7 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
                             spinning={loading}
                         />
                     </button>
-                    <span className={`text-xs text-accent whitespace-nowrap min-w-16 ${loading ? 'opacity-100' : 'opacity-70'}`}>
+                    <span className={`absolute left-full ml-3 top-1/2 -translate-y-1/2 text-xs text-accent whitespace-nowrap pointer-events-none ${loading ? 'opacity-100' : 'opacity-70'}`}>
                         {displayText}
                     </span>
                 </div>
@@ -69,7 +71,7 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
                 <div className="inline-flex items-center gap-1">
                     <button
                         onClick={() => fetch()}
-                        className={`cursor-pointer transition-all rounded-full hover-glow ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
+                        className={`cursor-pointer transition-all rounded-full btn-matte p-1 ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
                         title="Refresh"
                     >
                         <LogoSpinner
@@ -81,7 +83,7 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
                         {statusLabel}
                     </span>
                 </div>
-                <div className="inline-flex items-center gap-2 px-1 py-1 rounded-full
+                <div className="inline-flex items-center gap-1.5 px-1 py-1 rounded-full
                                 bg-surface border border-border/30"
                      style={{ boxShadow: '0 0 20px 8px rgba(0, 0, 0, 0.2)' }}>
                     <LogoutButton />

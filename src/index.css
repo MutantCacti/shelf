@@ -44,11 +44,11 @@
     --color-secondary-light: #e3c75e;
     --color-highlight: #6ab0de;
 
-    --color-bg: #0c100e;
-    --color-surface: #1a201e;
-    --color-border: #2e3533;
+    --color-bg: #0e1010;
+    --color-surface: #191d1d;
+    --color-border: #343334;
     --color-text: #dbe2e0;
-    --color-text-muted: #838e8b;
+    --color-text-muted: #888888;
 }
 
 html {
@@ -176,10 +176,8 @@ textarea:focus-visible {
         from var(--gradient-angle),
         var(--color-accent-dark),
         var(--color-accent),
-        var(--color-accent-light),
         var(--color-accent-dark),
         var(--color-accent),
-        var(--color-accent-light),
         var(--color-accent-dark)
     );
     animation: gradient-rotate 8s linear infinite;
@@ -215,4 +213,65 @@ textarea:focus-visible {
 
 .logout-glow::before {
     background: radial-gradient(circle, rgba(180, 90, 90, 0.25) 0%, transparent 70%);
+}
+
+.btn-matte {
+    position: relative;
+    transition: background-color 0.2s ease-out, color 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.btn-matte::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(70, 200, 130, 0.38) 0%, transparent 80%);
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+    pointer-events: none;
+}
+
+.btn-matte:hover,
+.btn-matte:focus-visible {
+    background-color: rgba(53, 196, 146, 0.12);
+}
+
+.btn-matte:hover::before,
+.btn-matte:focus-visible::before {
+    opacity: 1;
+}
+
+.btn-matte:focus-visible {
+    outline: none;
+}
+
+.btn-matte:disabled {
+    cursor: default;
+}
+
+.btn-matte:disabled:hover,
+.btn-matte:disabled:focus-visible {
+    background-color: transparent;
+}
+
+.btn-matte:disabled:hover::before,
+.btn-matte:disabled:focus-visible::before {
+    opacity: 0;
+}
+
+.btn-matte-active {
+    background-color: rgba(53, 196, 146, 0.08);
+}
+
+.btn-matte-red::before {
+    background: radial-gradient(circle, rgba(252, 130, 110, 0.34) 0%, transparent 80%);
+}
+
+.btn-matte-red:hover,
+.btn-matte-red:focus-visible {
+    background-color: rgba(248, 113, 113, 0.12);
+}
+
+.btn-matte-red.btn-matte-active {
+    background-color: rgba(248, 113, 113, 0.08);
 }

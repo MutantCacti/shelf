@@ -136,7 +136,8 @@ def test_e2e(extra_args: list[str] | None = None) -> bool:
         playwright_args = list(extra_args or [])
         is_headed = "--headed" in playwright_args
         if not is_headed and not any(a.startswith("--workers") for a in playwright_args):
-            playwright_args.append("--workers=6")
+            workers = "1" if os.environ.get("CI") else "6"
+            playwright_args.append(f"--workers={workers}")
         if playwright_args:
             cmd += ["--", *playwright_args]
         result = run(cmd, cwd=ROOT, check=False)

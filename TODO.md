@@ -1,6 +1,6 @@
-v1.4: Accessibility redesign 
+v1.5: Accessibility redesign 
 
-v1.5: Mobile redesign: bottom bar, chat-app UX, pull-to-refresh
+v1.6: Mobile redesign: bottom bar, chat-app UX, pull-to-refresh
 
 ---
 

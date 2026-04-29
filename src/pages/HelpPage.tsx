@@ -5,13 +5,14 @@ import Hero from '../components/Hero'
 const KEYBINDS = [
     ['Click', 'Select item'],
     ['Double-click', 'Preview item'],
+    ['Right-click', 'Copy text / Download file'],
     ['Click+drag', 'Lasso select'],
     ['Ctrl+Enter', 'Upload / Download selected'],
     ['Ctrl+A', 'Select all'],
     ['Ctrl+V', 'Paste text or files'],
     ['Ctrl+Esc', 'Logout'],
     ['Enter', 'Copy selected text / Submit input'],
-    ['F2 / Right-click', 'Rename item'],
+    ['F2', 'Edit item'],
     ['Delete / Backspace', 'Delete selected'],
     ['Escape', 'Clear selection'],
     ['?', 'Help'],
@@ -86,14 +87,23 @@ export default function HelpPage({ onBack, onPassword }: { onBack: () => void, o
                 </div>
 
                 <footer className="mt-10 pt-6 border-t border-border/20 text-center">
-                    <a
-                        href="https://github.com/MutantCacti/shelf/issues/new"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-text-muted hover:text-accent transition-colors underline underline-offset-4 decoration-text/30 hover:decoration-accent"
-                    >
-                        Send feedback
-                    </a>
+                    <div className="inline-flex items-center gap-3 text-xs text-text-muted">
+                        <a
+                            href="mailto:mutantcacti@gmail.com"
+                            className="hover:text-accent transition-colors underline underline-offset-4 decoration-text/30 hover:decoration-accent"
+                        >
+                            Send feedback
+                        </a>
+                        <span aria-hidden="true" className="text-border">·</span>
+                        <a
+                            href="https://github.com/MutantCacti/shelf/issues/new"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-accent transition-colors underline underline-offset-4 decoration-text/30 hover:decoration-accent"
+                        >
+                            Report an issue
+                        </a>
+                    </div>
                     <p className="text-[0.6rem] text-border mt-3">&copy; 2026 Maxence Morel Dierckx. All rights reserved.</p>
                 </footer>
             </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import TextInput from './TextInput'
 import SendButton from './SendButton'
 import PasteButton from './PasteButton'
@@ -17,8 +17,16 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
     const statusLabel = activity || (selected.length > 0 ? `${selected.length} selected` : statusText)
 
     const [displayText, setDisplayText] = useState(statusLabel)
+    const prevLabelRef = useRef(statusLabel)
     useEffect(() => {
         if (statusLabel === displayText) return
+        const isSelectedForm = (s: string) => /^\d+ selected$/.test(s)
+        const inPlace = isSelectedForm(statusLabel) && isSelectedForm(prevLabelRef.current)
+        prevLabelRef.current = statusLabel
+        if (inPlace) {
+            setDisplayText(statusLabel)
+            return
+        }
         setDisplayText('')
         let i = 0
         const id = setInterval(() => {

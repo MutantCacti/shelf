@@ -13,3 +13,7 @@ Implement SSE for immediate refresh on other devices when you have shelf open on
 Make selection persist across sessions
 
 Make the preview modal (and perhaps all modals) draggable and resizable
+
+Add special cases for text entries:
+- Links should be highlighted as such and ideally openable directly from the TransferItem
+- TODO: with or without a colon should be highlighted and maybe have a little complete button on hover? this could replace a delete button on hover which all items could have

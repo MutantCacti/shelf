@@ -10,10 +10,12 @@ Large file uploads could create the Item early and show a progress bar -- this c
 
 Implement SSE for immediate refresh on other devices when you have shelf open on two screens at once (replaces manual reload on receiving device)
 
-Make selection persist across sessions
+Make enter-to-rename not also download the file
 
-Make the preview modal (and perhaps all modals) draggable and resizable
+Make copy-paste preserve formatting as well as possible
 
-Add special cases for text entries:
-- Links should be highlighted as such and ideally openable directly from the TransferItem
-- TODO: with or without a colon should be highlighted and maybe have a little complete button on hover? this could replace a delete button on hover which all items could have
+Highlight hyperlinks and allow clicking them from the card
+
+Highlight TODO in text items starting with TODO
+
+Make /?token=<password> auto-open to that user so that you can share shelves as a single link

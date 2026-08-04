@@ -97,6 +97,18 @@ def get_npm_cmd() -> str:
     return "npm.cmd" if sys.platform == "win32" else "npm"
 
 
+def confirm(question: str, default: bool = True, non_interactive: bool = False) -> bool:
+    """Ask a yes/no question. Non-interactive stdin returns `non_interactive`."""
+    if not sys.stdin.isatty():
+        return non_interactive
+    suffix = "[Y/n]" if default else "[y/N]"
+    try:
+        answer = input(f"{question} {suffix} ").strip().lower()
+    except EOFError:
+        return non_interactive
+    return default if not answer else answer in ("y", "yes")
+
+
 def fix_cmd(cmd: list[str]) -> list[str]:
     """Normalise command for the current platform."""
     cmd = [str(c) for c in cmd]
@@ -125,6 +137,39 @@ def run(
     if check and result.returncode != 0:
         raise subprocess.CalledProcessError(result.returncode, cmd)
     return result
+
+
+# Playwright
+
+def playwright_browsers_installed() -> bool | None:
+    """Check if Playwright's chromium browsers are downloaded.
+
+    Returns True/False when known, None when the probe couldn't determine it.
+    `install --dry-run` prints each install location without touching the network,
+    and Playwright marks a finished download with an INSTALLATION_COMPLETE file.
+    """
+    try:
+        result = subprocess.run(
+            fix_cmd([get_npm_cmd(), "exec", "--", "playwright", "install", "--dry-run", "chromium"]),
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+
+    prefix = "Install location:"
+    locations = [
+        line.strip().removeprefix(prefix).strip()
+        for line in result.stdout.splitlines()
+        if line.strip().startswith(prefix)
+    ]
+    if not locations:
+        return None
+    return all((Path(loc) / "INSTALLATION_COMPLETE").exists() for loc in locations)
 
 
 # Network

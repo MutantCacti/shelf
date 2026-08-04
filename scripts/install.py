@@ -5,7 +5,10 @@ import signal
 import subprocess
 import sys
 
-from .utils import ROOT, API, LABELS, DEV_PASSWORD, get_venv_python, get_npm_cmd, run
+from .utils import (
+    ROOT, API, LABELS, DEV_PASSWORD,
+    confirm, get_venv_python, get_npm_cmd, playwright_browsers_installed, run,
+)
 
 
 def check_node() -> None:
@@ -34,6 +37,25 @@ def setup_frontend() -> None:
     print(f"\n[{label}] Setting up...")
     check_node()
     run([get_npm_cmd(), "install"], cwd=ROOT)
+    setup_playwright()
+
+
+def setup_playwright() -> None:
+    """Offer to download Playwright browsers for e2e tests."""
+    label = LABELS["frontend"]
+    if playwright_browsers_installed():
+        print(f"[{label}] Playwright browsers already installed.")
+        return
+
+    if not confirm(
+        f"[{label}] Download Playwright browsers (~280 MB) for e2e tests?",
+        default=True,
+        non_interactive=False,
+    ):
+        print(f"[{label}] Skipped. Re-run shelf-install and answer Yes to enable e2e tests.")
+        return
+
+    run([get_npm_cmd(), "exec", "--", "playwright", "install", "chromium"], cwd=ROOT)
 
 
 def seed_dev_user() -> None:

@@ -4,7 +4,7 @@ from termcolor import colored
 
 
 COMMANDS = [
-    ("shelf-install", "Set up API venv, npm install, and create dev user"),
+    ("shelf-install", "Set up API venv, npm install, Playwright browsers, and dev user"),
     ("shelf-start", "Start API and frontend dev servers"),
     ("shelf-stop", "Stop running services by port"),
     ("shelf-test", "Run all tests (unit + e2e)"),

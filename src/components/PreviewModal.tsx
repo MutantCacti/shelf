@@ -303,10 +303,19 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
         const margin = 16
         function position() {
             if (!el || !anchor) return
+            // Re-derive the anchor from the item's live position: zoom/resize
+            // reflows the grid, so the coordinates captured at open time go stale.
+            let { x, y } = anchor
+            const item = document.querySelector(`[data-transfer-id="${transfer.id}"]`)
+            if (item) {
+                const rect = item.getBoundingClientRect()
+                x = rect.left + rect.width / 2
+                y = rect.top + rect.height / 2
+            }
             const w = el.offsetWidth
             const h = el.offsetHeight
-            const left = Math.max(margin, Math.min(window.innerWidth - w - margin, anchor.x - w / 2))
-            const top = Math.max(margin, Math.min(window.innerHeight - h - margin, anchor.y - h / 2))
+            const left = Math.max(margin, Math.min(window.innerWidth - w - margin, x - w / 2))
+            const top = Math.max(margin, Math.min(window.innerHeight - h - margin, y - h / 2))
             setPos({ left, top })
         }
         position()
@@ -317,12 +326,15 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
             obs.disconnect()
             window.removeEventListener('resize', position)
         }
-    }, [anchor])
+    }, [anchor, transfer.id])
 
     let body: React.ReactNode
     if (editing && transfer.type === 'text') {
         body = (
             <div
+                // Keyed: the edit effect writes textContent imperatively, so this
+                // node must never be reused for the RichText view branch.
+                key="edit"
                 ref={editRef as React.RefObject<HTMLDivElement>}
                 contentEditable
                 suppressContentEditableWarning
@@ -335,7 +347,7 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
         )
     } else if (transfer.type === 'text') {
         body = (
-            <div className="text-sm text-text whitespace-pre-wrap wrap-break-word border border-transparent rounded">
+            <div key="view" className="text-sm text-text whitespace-pre-wrap wrap-break-word border border-transparent rounded">
                 <RichText content={transfer.content} />
             </div>
         )

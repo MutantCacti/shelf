@@ -328,6 +328,17 @@ describe('PreviewModal', () => {
             expect(screen.getByLabelText('Edit').tagName).toBe('BUTTON')
         })
 
+        it('confirming a text edit does not visually duplicate the content', async () => {
+            const rename = vi.fn()
+            useTransferStore.setState({ rename } as any)
+
+            render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} startInEdit />)
+            await userEvent.click(screen.getByLabelText('Save'))
+
+            const text = screen.getByTestId('preview-modal').textContent ?? ''
+            expect(text.match(/first line/g)).toHaveLength(1)
+        })
+
         it('committing without a change does not call store.rename', async () => {
             const rename = vi.fn()
             useTransferStore.setState({ rename } as any)
@@ -337,6 +348,28 @@ describe('PreviewModal', () => {
 
             expect(rename).not.toHaveBeenCalled()
         })
+    })
+
+    it('repositions over the item on window resize (zoom)', () => {
+        render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} anchor={{ x: 500, y: 400 }} />)
+        const card = screen.getByTestId('preview-modal').firstElementChild as HTMLElement
+        expect(card.style.left).toBe('500px')
+        expect(card.style.top).toBe('400px')
+
+        // Zoom reflows the grid: the item now sits elsewhere than the anchor
+        // captured at open time, and resize must re-derive from its live rect.
+        const item = document.createElement('div')
+        item.setAttribute('data-transfer-id', String(textTransfer.id))
+        item.getBoundingClientRect = () => ({
+            left: 250, top: 150, width: 100, height: 100,
+            right: 350, bottom: 250, x: 250, y: 150, toJSON: () => ({}),
+        }) as DOMRect
+        document.body.appendChild(item)
+
+        fireEvent(window, new Event('resize'))
+        expect(card.style.left).toBe('300px')
+        expect(card.style.top).toBe('200px')
+        item.remove()
     })
 
     describe('keybinds', () => {

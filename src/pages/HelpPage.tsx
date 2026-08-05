@@ -13,9 +13,10 @@ const KEYBINDS = [
     ['Ctrl+Esc', 'Logout'],
     ['Enter', 'Copy selected text / Submit input'],
     ['F2', 'Edit item'],
-    ['1-0', 'Colour-group selected'],
+    ['0', 'Clear colour group'],
+    ['1-9', 'Set colour group'],
     ['Delete / Backspace', 'Delete selected'],
-    ['Escape', 'Clear selection'],
+    ['Escape', 'Clear selected'],
     ['?', 'Help'],
 ]
 

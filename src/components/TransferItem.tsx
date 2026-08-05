@@ -132,7 +132,7 @@ function TextItem({ transfer, dim, iconSize, copied, onClick, onDoubleClick }: {
                 </span>
             ) : (
                 <span
-                    className="text-xs text-text text-left w-full h-full p-3 overflow-hidden wrap-break-word leading-relaxed"
+                    className="text-xs text-text text-left w-full h-full p-3 overflow-hidden whitespace-pre-wrap wrap-break-word leading-relaxed"
                     style={{ maskImage: 'linear-gradient(to bottom, black calc(80% - 1.5rem), transparent 100%)' }}
                 >
                     <RichText content={transfer.content} />

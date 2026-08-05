@@ -66,6 +66,13 @@ describe('TransferItem', () => {
         expect(screen.getByText('Hello world')).toBeInTheDocument()
     })
 
+    it('preserves newlines in the text preview', () => {
+        render(<TransferItem transfer={{ ...textTransfer, content: 'line one\nline two' }} />)
+        const span = screen.getByText(/line one/)
+        expect(span.textContent).toBe('line one\nline two')
+        expect(span.className).toContain('whitespace-pre-wrap')
+    })
+
     it('renders file transfer with filename', () => {
         render(<TransferItem transfer={nonImageFile} />)
         expect(screen.getByText('archive.zip')).toBeInTheDocument()

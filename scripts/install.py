@@ -55,7 +55,9 @@ def setup_playwright() -> None:
         print(f"[{label}] Skipped. Re-run shelf-install and answer Yes to enable e2e tests.")
         return
 
-    run([get_npm_cmd(), "exec", "--", "playwright", "install", "chromium"], cwd=ROOT)
+    # --no-shell: e2e runs headless in the full browser (playwright.config.ts
+    # sets channel "chromium"), so the separate headless shell is never needed
+    run([get_npm_cmd(), "exec", "--", "playwright", "install", "--no-shell", "chromium"], cwd=ROOT)
 
 
 def seed_dev_user() -> None:

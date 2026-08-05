@@ -150,7 +150,7 @@ def playwright_browsers_installed() -> bool | None:
     """
     try:
         result = subprocess.run(
-            fix_cmd([get_npm_cmd(), "exec", "--", "playwright", "install", "--dry-run", "chromium"]),
+            fix_cmd([get_npm_cmd(), "exec", "--", "playwright", "install", "--dry-run", "--no-shell", "chromium"]),
             cwd=ROOT,
             capture_output=True,
             text=True,

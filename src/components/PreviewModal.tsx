@@ -222,6 +222,9 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
 
     useEffect(() => {
         function handleKey(e: KeyboardEvent) {
+            const target = e.target
+            if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
+                || (target instanceof HTMLElement && target.isContentEditable)) return
             if (e.key === 'Escape') {
                 e.preventDefault()
                 if (editing) cancelEdit()
@@ -246,16 +249,24 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
     }, [editing, transfer])
 
     function handleEditKeyDown(e: React.KeyboardEvent) {
+        if (e.key === 'Escape') {
+            e.preventDefault()
+            e.stopPropagation()
+            cancelEdit()
+            return
+        }
         if (e.key !== 'Enter') return
         const isInput = e.currentTarget.tagName === 'INPUT'
         if (isInput) {
             if (!e.shiftKey) {
                 e.preventDefault()
+                e.stopPropagation()
                 commitEdit()
             }
         } else if (e.ctrlKey || e.metaKey) {
             // Multi-line: Ctrl/Cmd+Enter commits; plain Enter inserts newline.
             e.preventDefault()
+            e.stopPropagation()
             commitEdit()
         }
     }

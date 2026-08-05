@@ -53,7 +53,9 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
     }
 
     const handlePaste = useCallback((e: ClipboardEvent) => {
-        if (e.target instanceof HTMLInputElement) return
+        if (showConfirm || previewId != null) return
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
+            || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
         const { transfers } = useTransferStore.getState()
         const files = Array.from(e.clipboardData?.files ?? [])
         if (files.length > 0) {
@@ -66,7 +68,7 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
             if (!text) return
             createText(text).then(dupId => { if (dupId) nudgeDuplicate(dupId) })
         }
-    }, [uploadFile, createText])
+    }, [uploadFile, createText, showConfirm, previewId])
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (showConfirm || previewId != null) return

@@ -237,6 +237,47 @@ describe('PreviewModal', () => {
             expect(screen.getByLabelText('Edit').tagName).toBe('BUTTON')
         })
 
+        it('Enter committing a rename does not also trigger download', async () => {
+            const rename = vi.fn()
+            const download = vi.fn()
+            useTransferStore.setState({ rename, download } as any)
+
+            render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} startInEdit />)
+            const input = screen.getByLabelText('Edit') as HTMLInputElement
+            await userEvent.clear(input)
+            await userEvent.type(input, 'renamed.zip{Enter}')
+
+            expect(rename).toHaveBeenCalledWith(archiveTransfer.id, 'renamed.zip')
+            expect(download).not.toHaveBeenCalled()
+        })
+
+        it('Ctrl+Enter committing a text edit does not also copy', () => {
+            const rename = vi.fn()
+            const writeText = vi.fn()
+            useTransferStore.setState({ rename } as any)
+            Object.defineProperty(navigator, 'clipboard', {
+                value: { writeText },
+                configurable: true,
+            })
+
+            render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} startInEdit />)
+            const editor = screen.getByLabelText('Edit')
+            fireEvent.keyDown(editor, { key: 'Enter', ctrlKey: true })
+
+            expect(writeText).not.toHaveBeenCalled()
+        })
+
+        it('Escape inside the edit field cancels edit without dismissing', () => {
+            const onClose = vi.fn()
+            render(<PreviewModal transfer={archiveTransfer} onClose={onClose} startInEdit />)
+            const input = screen.getByLabelText('Edit') as HTMLInputElement
+            fireEvent.keyDown(input, { key: 'Escape' })
+            vi.advanceTimersByTime(200)
+
+            expect(onClose).not.toHaveBeenCalled()
+            expect(screen.getByLabelText('Edit').tagName).toBe('BUTTON')
+        })
+
         it('committing without a change does not call store.rename', async () => {
             const rename = vi.fn()
             useTransferStore.setState({ rename } as any)

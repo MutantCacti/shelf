@@ -34,4 +34,32 @@ test.describe("preview modal", () => {
         await page.keyboard.press("Escape")
         await expect(modal).not.toBeVisible()
     })
+
+    test("pasting while the preview is open does not paste onto the main page", async ({ page }) => {
+        const fileInput = page.locator("#upload-input").first()
+        await fileInput.setInputFiles(tmpFile)
+
+        const items = page.locator("[data-transfer-id]")
+        await expect(items).toHaveCount(1)
+
+        await items.first().dblclick()
+        const modal = page.getByTestId("preview-modal")
+        await expect(modal).toBeVisible()
+
+        const firePaste = () => page.evaluate(() => {
+            const dt = new DataTransfer()
+            dt.setData("text/plain", "sneaky paste")
+            window.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }))
+        })
+
+        await firePaste()
+        await expect(items).toHaveCount(1)
+
+        // Sanity check: the same paste lands once the modal is closed
+        await page.keyboard.press("Escape")
+        await expect(modal).not.toBeVisible()
+        await firePaste()
+        await expect(items).toHaveCount(2)
+        await expect(page.locator("[data-transfer-id]", { hasText: "sneaky paste" })).toBeVisible()
+    })
 })

@@ -220,6 +220,27 @@ describe('PreviewModal', () => {
             expect(input.tagName).toBe('INPUT')
         })
 
+        it('opening edit selects only the name without the extension', () => {
+            render(<PreviewModal transfer={archiveTransfer} onClose={vi.fn()} startInEdit />)
+            const input = screen.getByLabelText('Edit') as HTMLInputElement
+            // "archive.zip" -> "archive" selected
+            expect(input.selectionStart).toBe(0)
+            expect(input.selectionEnd).toBe('archive'.length)
+        })
+
+        it('opening edit selects the whole name for extensionless files and dotfiles', () => {
+            const dotfile: Transfer = { ...archiveTransfer, content: '.env' }
+            const { unmount } = render(<PreviewModal transfer={dotfile} onClose={vi.fn()} startInEdit />)
+            let input = screen.getByLabelText('Edit') as HTMLInputElement
+            expect(input.selectionEnd).toBe('.env'.length)
+            unmount()
+
+            const bare: Transfer = { ...archiveTransfer, content: 'Makefile' }
+            render(<PreviewModal transfer={bare} onClose={vi.fn()} startInEdit />)
+            input = screen.getByLabelText('Edit') as HTMLInputElement
+            expect(input.selectionEnd).toBe('Makefile'.length)
+        })
+
         it('startInEdit opens directly in edit mode for text', () => {
             render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} startInEdit />)
             const editor = screen.getByLabelText('Edit')

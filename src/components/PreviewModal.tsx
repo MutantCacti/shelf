@@ -203,7 +203,10 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
         const el = editRef.current
         el.focus()
         if (el instanceof HTMLInputElement) {
-            el.select()
+            // Select only the basename: renames rarely mean the extension,
+            // and a dotfile (".env") has no extension to spare.
+            const dot = el.value.lastIndexOf('.')
+            el.setSelectionRange(0, dot > 0 ? dot : el.value.length)
         } else {
             el.textContent = transfer.content
             const range = document.createRange()

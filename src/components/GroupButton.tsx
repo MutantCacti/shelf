@@ -45,7 +45,7 @@ export default function GroupButton() {
             {open && (
                 <div
                     data-testid="group-palette"
-                    className="absolute top-full mt-2 left-1/2 -translate-x-1/2 grid grid-cols-[repeat(6,auto)] gap-1.5 p-2 rounded-xl bg-surface border border-border/30 animate-fade-in"
+                    className="absolute top-full mt-2 left-1/2 -translate-x-1/2 grid grid-cols-[repeat(5,auto)] gap-1.5 p-2 rounded-xl bg-surface border border-border/30 animate-fade-in"
                     style={{ boxShadow: '0 0 20px 8px rgba(0, 0, 0, 0.2)' }}
                 >
                     {GROUP_COLORS.map((color, i) => (

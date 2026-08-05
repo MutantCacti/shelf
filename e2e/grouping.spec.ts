@@ -49,9 +49,9 @@ test.describe("colour grouping", () => {
         const swatchColors = await page.getByTestId("group-palette")
             .locator("button[aria-label^='Group']")
             .evaluateAll(els => els.map(el => getComputedStyle(el).backgroundColor))
-        expect(swatchColors).toHaveLength(10)
+        expect(swatchColors).toHaveLength(9)
         expect(swatchColors).not.toContain("rgba(0, 0, 0, 0)")
-        expect(new Set(swatchColors).size).toBe(10)
+        expect(new Set(swatchColors).size).toBe(9)
 
         await page.getByTestId("group-palette").getByLabel("Group 5").click()
         await expect(gamma).toHaveClass(/group-tinted/)
@@ -60,6 +60,19 @@ test.describe("colour grouping", () => {
         await page.getByTitle("Group colours").first().click()
         await page.getByTestId("group-palette").getByLabel("No colour").click()
         await expect(gamma).not.toHaveClass(/group-tinted/)
+    })
+
+    test("0 clears the group of the selection", async ({ page }) => {
+        await createText(page, "delta")
+
+        const delta = page.locator("[data-transfer-id]", { hasText: "delta" })
+        await delta.click()
+        await page.keyboard.press("2")
+        await expect(delta).toHaveClass(/group-tinted/)
+
+        // Selection survives grouping, so 0 clears it straight away
+        await page.keyboard.press("0")
+        await expect(delta).not.toHaveClass(/group-tinted/)
     })
 
     test("typing numbers with nothing selected still goes to the text input", async ({ page }) => {

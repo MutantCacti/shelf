@@ -17,8 +17,8 @@ describe('keyToGroup', () => {
         expect(keyToGroup('9')).toBe(9)
     })
 
-    it('maps 0 to group 10', () => {
-        expect(keyToGroup('0')).toBe(10)
+    it('maps 0 to null, which clears the group', () => {
+        expect(keyToGroup('0')).toBeNull()
     })
 
     it('returns null for non-digit keys', () => {
@@ -53,7 +53,7 @@ describe('byGroupThenCreated', () => {
 describe('groupColor', () => {
     it('maps group n to --color-group-n', () => {
         expect(groupColor(1)).toBe('var(--color-group-1)')
-        expect(groupColor(10)).toBe('var(--color-group-10)')
-        expect(GROUP_COLORS).toHaveLength(10)
+        expect(groupColor(9)).toBe('var(--color-group-9)')
+        expect(GROUP_COLORS).toHaveLength(9)
     })
 })

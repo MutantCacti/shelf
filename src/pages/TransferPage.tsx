@@ -147,7 +147,7 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
             }
             return
         }
-        // Number keys colour-group the selection (1-9 -> groups 1-9, 0 -> group 10)
+        // Number keys colour-group the selection (1-9 set the group, 0 clears it)
         if (/^[0-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey
             && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
             const { selected, applyGroup } = useTransferStore.getState()

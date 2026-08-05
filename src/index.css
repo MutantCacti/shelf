@@ -59,18 +59,17 @@
     --color-text: #e3e9ef;
     --color-text-muted: #8a94a3;
 
-    /* Colour groups 1-10; the selection ring follows the group colour, so
-       proximity to the accent no longer matters */
+    /* Colour groups 1-9; every 30% tint on --color-surface keeps >= 4.5:1
+       contrast with --color-text, --color-secondary and --color-link */
     --color-group-1: #e5484d;
     --color-group-2: #f76b15;
-    --color-group-3: #ffc53d;
+    --color-group-3: #dba934;
     --color-group-4: #46b03a;
     --color-group-5: #00b3d0;
     --color-group-6: #3f8ef7;
     --color-group-7: #7c66dc;
     --color-group-8: #d6409f;
-    --color-group-9: #a98467;
-    --color-group-10: #8f9491;
+    --color-group-9: #8f9491;
 }
 
 html {

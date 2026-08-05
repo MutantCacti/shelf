@@ -47,7 +47,7 @@ class BatchDeleteRequest(BaseModel):
 
 class BatchGroupRequest(BaseModel):
     ids: list[int] = Field(..., max_length=1000)
-    group: Optional[int] = Field(None, ge=1, le=10)
+    group: Optional[int] = Field(None, ge=1, le=9)
 
 
 class TransferCreate(BaseModel):

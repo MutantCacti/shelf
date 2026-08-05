@@ -439,7 +439,7 @@ def test_batch_group_assign_and_clear(auth_client):
     assert groups[ids[1]] == 3
 
 
-@pytest.mark.parametrize("group", [0, 11, -1])
+@pytest.mark.parametrize("group", [0, 10, -1])
 def test_batch_group_rejects_out_of_range(auth_client, group):
     resp = auth_client.post("/transfers/", json={"type": "text", "content": "item"})
     transfer_id = resp.json()["id"]

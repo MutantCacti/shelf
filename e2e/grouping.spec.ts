@@ -43,6 +43,16 @@ test.describe("colour grouping", () => {
         await expect(page.getByTitle("Upload files")).toHaveCount(0)
         await page.getByTitle("Group colours").first().click()
 
+        // Every swatch must resolve its --color-group-N variable to a real,
+        // distinct colour (Tailwind prunes @theme vars it can't see referenced
+        // statically — regression guard for the invisible-swatch bug)
+        const swatchColors = await page.getByTestId("group-palette")
+            .locator("button[aria-label^='Group']")
+            .evaluateAll(els => els.map(el => getComputedStyle(el).backgroundColor))
+        expect(swatchColors).toHaveLength(10)
+        expect(swatchColors).not.toContain("rgba(0, 0, 0, 0)")
+        expect(new Set(swatchColors).size).toBe(10)
+
         await page.getByTestId("group-palette").getByLabel("Group 5").click()
         await expect(gamma).toHaveClass(/group-tinted/)
 

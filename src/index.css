@@ -30,7 +30,10 @@
     font-display: swap;
 }
 
-@theme {
+/* Static: some variables are only referenced dynamically at runtime
+   (e.g. var(--color-group-${n}) built in JS), which Tailwind's scanner
+   can't see — without `static` it prunes them from the output. */
+@theme static {
     --breakpoint-sm: 480px;
     --font-sans: 'Figtree', sans-serif;
     --font-mono: 'Google Sans Code', monospace;
@@ -49,6 +52,13 @@
     --color-secondary-light: #e3c75e;
     --color-highlight: #6ab0de;
 
+    /* "Slate" ground: cool blue-leaning neutrals under the green accent */
+    --color-bg: #0c1016;
+    --color-surface: #151b23;
+    --color-border: #2c3440;
+    --color-text: #e3e9ef;
+    --color-text-muted: #8a94a3;
+
     /* Colour groups 1-10; 4 and 5 sit away from the accent so no group
        colour collides with the selection ring */
     --color-group-1: #e5484d;
@@ -61,13 +71,6 @@
     --color-group-8: #d6409f;
     --color-group-9: #a98467;
     --color-group-10: #8f9491;
-
-    /* "Slate" ground: cool blue-leaning neutrals under the green accent */
-    --color-bg: #0c1016;
-    --color-surface: #151b23;
-    --color-border: #2c3440;
-    --color-text: #e3e9ef;
-    --color-text-muted: #8a94a3;
 }
 
 html {
@@ -124,18 +127,16 @@ textarea:focus-visible {
     background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
 }
 
-/* Colour-group tint: inset ring so it never fights the selection ::after border */
-.group-tinted {
-    background-color: color-mix(in srgb, var(--group-color) 10%, transparent);
-    box-shadow:
-        inset 0 0 0 2px color-mix(in srgb, var(--group-color) 55%, transparent),
-        0 2px 4px 1px rgba(0, 0, 0, 0.15);
-}
-
-.glow-wrap.group-tinted:hover {
-    box-shadow:
-        inset 0 0 0 2px color-mix(in srgb, var(--group-color) 55%, transparent),
-        0 4px 12px 2px rgba(0, 0, 0, 0.3);
+/* Colour-group tint: overlay covering the whole card, above the (opaque)
+   card content so it reads on text, file and image cards alike */
+.group-tinted::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: color-mix(in srgb, var(--group-color) 22%, transparent);
+    pointer-events: none;
+    z-index: 1;
 }
 
 .glow-wrap.active::after {

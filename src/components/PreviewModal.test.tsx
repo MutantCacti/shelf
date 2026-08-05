@@ -156,6 +156,20 @@ describe('PreviewModal', () => {
         expect(modal).toHaveTextContent('second line')
     })
 
+    it('carries the group tint when the transfer is grouped', () => {
+        const grouped: Transfer = { ...textTransfer, group: 4 }
+        render(<PreviewModal transfer={grouped} onClose={vi.fn()} />)
+        const card = screen.getByTestId('preview-modal').firstElementChild as HTMLElement
+        expect(card.classList.contains('group-tinted')).toBe(true)
+        expect(card.style.getPropertyValue('--group-color')).toBe('var(--color-group-4)')
+    })
+
+    it('no group tint when the transfer is ungrouped', () => {
+        render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} />)
+        const card = screen.getByTestId('preview-modal').firstElementChild as HTMLElement
+        expect(card.classList.contains('group-tinted')).toBe(false)
+    })
+
     it('linkifies urls and highlights TODO in the text preview', () => {
         const todoTransfer: Transfer = {
             ...textTransfer,

@@ -4,6 +4,7 @@ import { Transfer } from '../types/types'
 import useTransferStore from '../stores/TransferStore'
 import { RichText } from '../lib/richtext'
 import { copyRichText } from '../lib/clipboard'
+import { groupColor } from '../lib/groups'
 
 const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico', 'bmp', 'tiff'])
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'mov', 'm4v', 'mkv', 'avi'])
@@ -406,10 +407,11 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
         >
             <div
                 ref={cardRef}
-                className={`bg-surface border border-border rounded-xl ${ext === 'pdf' ? 'w-full' : ''} max-w-2xl max-h-[90vh] flex flex-col transition-[opacity,transform] duration-150`}
+                className={`relative bg-surface border border-border rounded-xl ${ext === 'pdf' ? 'w-full' : ''} max-w-2xl max-h-[90vh] flex flex-col transition-[opacity,transform] duration-150${transfer.group != null ? ' group-tinted' : ''}`}
                 style={{
                     ...cardPositionStyle,
                     ...(editing && editingWidth != null ? { width: `${editingWidth}px` } : {}),
+                    ...(transfer.group != null && { '--group-color': groupColor(transfer.group) } as React.CSSProperties),
                     opacity: visible && !cardHidden ? 1 : 0,
                     transform: visible ? 'scale(1)' : 'scale(0.95)',
                 }}

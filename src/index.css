@@ -39,6 +39,11 @@
     --color-accent-light: #35c492;
     --color-accent-dark: #1a7d5c;
     --color-accent-subtle: #ddf1ea;
+    --color-accent-bright: #46c882;
+
+    --color-danger: #f87171;
+    --color-danger-light: #fc826e;
+    --color-danger-dark: #b45a5a;
 
     --color-secondary: #d9b435;
     --color-secondary-light: #e3c75e;
@@ -102,7 +107,7 @@ textarea:focus-visible {
 }
 
 .glow-wrap.active {
-    background-color: rgba(35, 166, 122, 0.08);
+    background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
 }
 
 .glow-wrap.active::after {
@@ -196,7 +201,7 @@ textarea:focus-visible {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: radial-gradient(circle, rgba(26, 125, 92, 0.25) 0%, transparent 70%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-accent-dark) 25%, transparent) 0%, transparent 70%);
     opacity: 0;
     transition: opacity 0.2s ease-out;
     pointer-events: none;
@@ -212,7 +217,7 @@ textarea:focus-visible {
 }
 
 .logout-glow::before {
-    background: radial-gradient(circle, rgba(180, 90, 90, 0.25) 0%, transparent 70%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-danger-dark) 25%, transparent) 0%, transparent 70%);
 }
 
 .btn-matte {
@@ -225,7 +230,7 @@ textarea:focus-visible {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: radial-gradient(circle, rgba(70, 200, 130, 0.38) 0%, transparent 80%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-accent-bright) 38%, transparent) 0%, transparent 80%);
     opacity: 0;
     transition: opacity 0.2s ease-out;
     pointer-events: none;
@@ -233,7 +238,7 @@ textarea:focus-visible {
 
 .btn-matte:hover,
 .btn-matte:focus-visible {
-    background-color: rgba(53, 196, 146, 0.12);
+    background-color: color-mix(in srgb, var(--color-accent-light) 12%, transparent);
 }
 
 .btn-matte:hover::before,
@@ -260,18 +265,18 @@ textarea:focus-visible {
 }
 
 .btn-matte-active {
-    background-color: rgba(53, 196, 146, 0.08);
+    background-color: color-mix(in srgb, var(--color-accent-light) 8%, transparent);
 }
 
 .btn-matte-red::before {
-    background: radial-gradient(circle, rgba(252, 130, 110, 0.34) 0%, transparent 80%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-danger-light) 34%, transparent) 0%, transparent 80%);
 }
 
 .btn-matte-red:hover,
 .btn-matte-red:focus-visible {
-    background-color: rgba(248, 113, 113, 0.12);
+    background-color: color-mix(in srgb, var(--color-danger) 12%, transparent);
 }
 
 .btn-matte-red.btn-matte-active {
-    background-color: rgba(248, 113, 113, 0.08);
+    background-color: color-mix(in srgb, var(--color-danger) 8%, transparent);
 }

@@ -275,7 +275,7 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
                 {lassoStyle && (
                     <div
                         className="absolute pointer-events-none border border-accent/50 z-30"
-                        style={{ ...lassoStyle, backgroundColor: 'rgba(35, 166, 122, 0.08)' }}
+                        style={{ ...lassoStyle, backgroundColor: 'color-mix(in srgb, var(--color-accent) 8%, transparent)' }}
                     />
                 )}
             </div>

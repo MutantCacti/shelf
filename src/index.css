@@ -49,23 +49,25 @@
     --color-secondary-light: #e3c75e;
     --color-highlight: #6ab0de;
 
-    /* Colour groups 1-10 (placeholder values; finalised with the palette redesign) */
+    /* Colour groups 1-10; 4 and 5 sit away from the accent so no group
+       colour collides with the selection ring */
     --color-group-1: #e5484d;
     --color-group-2: #f76b15;
     --color-group-3: #ffc53d;
-    --color-group-4: #46a758;
-    --color-group-5: #12a594;
-    --color-group-6: #0091ff;
-    --color-group-7: #6e56cf;
+    --color-group-4: #9db320;
+    --color-group-5: #00b3d0;
+    --color-group-6: #3f8ef7;
+    --color-group-7: #7c66dc;
     --color-group-8: #d6409f;
-    --color-group-9: #ad7f58;
-    --color-group-10: #8d8d8d;
+    --color-group-9: #a98467;
+    --color-group-10: #8f9491;
 
-    --color-bg: #0e1010;
-    --color-surface: #191d1d;
-    --color-border: #343334;
-    --color-text: #dbe2e0;
-    --color-text-muted: #888888;
+    /* "Slate" ground: cool blue-leaning neutrals under the green accent */
+    --color-bg: #0c1016;
+    --color-surface: #151b23;
+    --color-border: #2c3440;
+    --color-text: #e3e9ef;
+    --color-text-muted: #8a94a3;
 }
 
 html {

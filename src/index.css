@@ -59,12 +59,12 @@
     --color-text: #e3e9ef;
     --color-text-muted: #8a94a3;
 
-    /* Colour groups 1-10; 4 and 5 sit away from the accent so no group
-       colour collides with the selection ring */
+    /* Colour groups 1-10; the selection ring follows the group colour, so
+       proximity to the accent no longer matters */
     --color-group-1: #e5484d;
     --color-group-2: #f76b15;
     --color-group-3: #ffc53d;
-    --color-group-4: #9db320;
+    --color-group-4: #46b03a;
     --color-group-5: #00b3d0;
     --color-group-6: #3f8ef7;
     --color-group-7: #7c66dc;
@@ -123,20 +123,24 @@ textarea:focus-visible {
     transition: background-color 0.15s ease-out, transform 0.3s ease-out, box-shadow 0.3s ease-out;
 }
 
+/* Selection glow follows the item's group colour, falling back to accent */
 .glow-wrap.active {
-    background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
+    background-color: color-mix(in srgb, var(--group-color, var(--color-accent)) 8%, transparent);
 }
 
-/* Colour-group tint: overlay covering the whole card, above the (opaque)
-   card content so it reads on text, file and image cards alike */
-.group-tinted::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background-color: color-mix(in srgb, var(--group-color) 22%, transparent);
-    pointer-events: none;
-    z-index: 1;
+/* Colour-group tint: mixed into the card's own background so text, icons and
+   media stay untinted — image cards only show it through the bottom fade */
+.group-tinted > .bg-surface,
+.group-tinted.bg-surface {
+    background-color: color-mix(in srgb, var(--group-color) 30%, var(--color-surface));
+}
+
+.group-tinted > .bg-bg {
+    background-color: color-mix(in srgb, var(--group-color) 30%, var(--color-bg));
+}
+
+.group-tinted {
+    border-color: color-mix(in srgb, var(--group-color) 45%, var(--color-border));
 }
 
 .glow-wrap.active::after {
@@ -145,15 +149,16 @@ textarea:focus-visible {
     inset: 0;
     border-radius: inherit;
     padding: 2px;
+    --ring-base: var(--group-color, var(--color-accent));
     background: conic-gradient(
         from var(--gradient-angle),
-        var(--color-accent-dark),
-        var(--color-accent),
-        var(--color-accent-light),
-        var(--color-accent-dark),
-        var(--color-accent),
-        var(--color-accent-light),
-        var(--color-accent-dark)
+        color-mix(in srgb, var(--ring-base) 75%, black),
+        var(--ring-base),
+        color-mix(in srgb, var(--ring-base) 85%, white),
+        color-mix(in srgb, var(--ring-base) 75%, black),
+        var(--ring-base),
+        color-mix(in srgb, var(--ring-base) 85%, white),
+        color-mix(in srgb, var(--ring-base) 75%, black)
     );
     animation: gradient-rotate 4s linear infinite;
     -webkit-mask:

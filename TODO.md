@@ -1,6 +1,8 @@
 ## v1.6 Changes
 
+- Update README with a new image and just better introduction in general
 
+- Do a full code comment and hygiene pass
 
 ## Next Major Versions
 

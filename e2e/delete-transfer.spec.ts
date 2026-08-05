@@ -1,13 +1,8 @@
 import { test, expect } from "@playwright/test"
-import { login, clearTransfers } from "./helpers"
+import { useCleanGrid } from "./helpers"
 
 test.describe("delete transfer", () => {
-    test.beforeEach(async ({ page }) => {
-        await login(page)
-        await clearTransfers(page)
-        await page.reload()
-        await page.getByTestId("transfer-grid").waitFor()
-    })
+    useCleanGrid()
 
     test("create then delete a text transfer", async ({ page }) => {
         await page.getByPlaceholder("Send text").fill("delete me")

@@ -7,6 +7,7 @@ const transfer = (overrides = {}) => ({
     content: 'hello',
     created_at: '2025-01-01T00:00:00Z',
     size: null,
+    group: null,
     ...overrides,
 })
 
@@ -40,6 +41,7 @@ function resetStore() {
         statusText: 'try help',
         usage: null,
         selected: [],
+        selectionAnchor: null,
     })
 }
 
@@ -71,15 +73,15 @@ describe('TransferStore', () => {
             expect(s.error).toBeNull()
         })
 
-        it('clears selected on fetch', async () => {
+        it('prunes stale ids from selection but keeps live ones', async () => {
             useTransferStore.setState({ selected: [1, 2, 3] })
             globalThis.fetch = mockFetch({
-                '/api/transfers/': { ok: true, body: [] },
+                '/api/transfers/': { ok: true, body: [transfer({ id: 2 })] },
                 '/usage': { ok: true, body: usage },
             })
 
             await useTransferStore.getState().fetch()
-            expect(useTransferStore.getState().selected).toEqual([])
+            expect(useTransferStore.getState().selected).toEqual([2])
         })
 
         it('sets error on failure', async () => {
@@ -152,6 +154,56 @@ describe('TransferStore', () => {
             })
 
             expect(useTransferStore.getState().transfers[0]).toEqual(newT)
+        })
+
+        it('runs at most 3 uploads in parallel, starting the smallest pending file first', async () => {
+            const started: string[] = []
+            const resolvers: Record<string, () => void> = {}
+            globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+                if (url.includes('/usage')) {
+                    return { ok: true, status: 200, statusText: 'OK', json: async () => usage, text: async () => '' } as any
+                }
+                const name = ((init!.body as FormData).get('data') as File).name
+                started.push(name)
+                return new Promise(resolve => {
+                    resolvers[name] = () => resolve({
+                        ok: true, status: 200, statusText: 'OK',
+                        json: async () => transfer({ id: started.length, type: 'file', content: name, size: 1 }),
+                        text: async () => '',
+                    })
+                })
+            }) as any
+
+            const mk = (name: string, size: number) => {
+                const f = new File(['x'], name)
+                Object.defineProperty(f, 'size', { value: size })
+                return f
+            }
+
+            const s = useTransferStore.getState()
+            s.uploadFile(mk('big.iso', 1000))
+            s.uploadFile(mk('a.txt', 10))
+            s.uploadFile(mk('b.txt', 20))
+            s.uploadFile(mk('d.txt', 40))
+            s.uploadFile(mk('c.txt', 30))
+
+            // First three occupy the lanes in arrival order; the rest wait
+            expect(started).toEqual(['big.iso', 'a.txt', 'b.txt'])
+
+            // Freeing a lane starts the smallest pending file, not the next queued
+            resolvers['a.txt']()
+            await vi.waitFor(() => expect(started).toHaveLength(4))
+            expect(started[3]).toBe('c.txt')
+
+            resolvers['big.iso']()
+            await vi.waitFor(() => expect(started).toHaveLength(5))
+            expect(started[4]).toBe('d.txt')
+
+            resolvers['b.txt']()
+            resolvers['c.txt']()
+            resolvers['d.txt']()
+            await vi.waitFor(() => expect(useTransferStore.getState().inflight).toBe(0))
+            expect(useTransferStore.getState().transfers).toHaveLength(5)
         })
 
         it('rejects files > 1GB client-side', async () => {
@@ -281,6 +333,74 @@ describe('TransferStore', () => {
 
     // selection
 
+    describe('applyGroup', () => {
+        it('optimistically sets the group and POSTs batch-group', async () => {
+            useTransferStore.setState({ transfers: [transfer({ id: 1 }), transfer({ id: 2 })] })
+            const fetchMock = mockFetch({
+                '/batch-group': { ok: true },
+                '/usage': { ok: true, body: usage },
+            })
+            globalThis.fetch = fetchMock
+
+            const promise = useTransferStore.getState().applyGroup([1], 3)
+            expect(useTransferStore.getState().transfers.find(t => t.id === 1)?.group).toBe(3)
+            await promise
+
+            const call = fetchMock.mock.calls.find(([url]) => url.includes('/batch-group'))!
+            expect(JSON.parse(call[1]!.body as string)).toEqual({ ids: [1], group: 3 })
+            expect(useTransferStore.getState().transfers.find(t => t.id === 2)?.group).toBeNull()
+        })
+
+        it('toggles to clear when every target already has the group', async () => {
+            useTransferStore.setState({
+                transfers: [transfer({ id: 1, group: 3 }), transfer({ id: 2, group: 3 })],
+            })
+            const fetchMock = mockFetch({
+                '/batch-group': { ok: true },
+                '/usage': { ok: true, body: usage },
+            })
+            globalThis.fetch = fetchMock
+
+            await useTransferStore.getState().applyGroup([1, 2], 3)
+
+            const call = fetchMock.mock.calls.find(([url]) => url.includes('/batch-group'))!
+            expect(JSON.parse(call[1]!.body as string)).toEqual({ ids: [1, 2], group: null })
+            expect(useTransferStore.getState().transfers.every(t => t.group === null)).toBe(true)
+        })
+
+        it('does not toggle when only some targets have the group', async () => {
+            useTransferStore.setState({
+                transfers: [transfer({ id: 1, group: 3 }), transfer({ id: 2 })],
+            })
+            const fetchMock = mockFetch({
+                '/batch-group': { ok: true },
+                '/usage': { ok: true, body: usage },
+            })
+            globalThis.fetch = fetchMock
+
+            await useTransferStore.getState().applyGroup([1, 2], 3)
+
+            const call = fetchMock.mock.calls.find(([url]) => url.includes('/batch-group'))!
+            expect(JSON.parse(call[1]!.body as string)).toEqual({ ids: [1, 2], group: 3 })
+        })
+
+        it('re-fetches on error', async () => {
+            const serverState = [transfer({ id: 1, group: null })]
+            useTransferStore.setState({ transfers: serverState })
+            globalThis.fetch = mockFetch({
+                '/batch-group': { ok: false, body: 'Grouping failed' },
+                '/api/transfers/': { ok: true, body: serverState },
+                '/usage': { ok: true, body: usage },
+            })
+
+            await useTransferStore.getState().applyGroup([1], 5)
+            const s = useTransferStore.getState()
+
+            expect(s.error).toBe('Grouping failed')
+            expect(s.transfers.find(t => t.id === 1)?.group).toBeNull()
+        })
+    })
+
     describe('selection', () => {
         it('toggleSelect adds and removes IDs', () => {
             const { toggleSelect } = useTransferStore.getState()
@@ -299,6 +419,59 @@ describe('TransferStore', () => {
             useTransferStore.setState({ selected: [1, 2, 3] })
             useTransferStore.getState().clearSelection()
             expect(useTransferStore.getState().selected).toEqual([])
+        })
+
+        it('selectOnly replaces the selection and moves the anchor', () => {
+            useTransferStore.setState({ selected: [1, 2], selectionAnchor: 1 })
+            useTransferStore.getState().selectOnly(3)
+            const s = useTransferStore.getState()
+            expect(s.selected).toEqual([3])
+            expect(s.selectionAnchor).toBe(3)
+        })
+
+        it('toggleSelect moves the anchor to the toggled item', () => {
+            useTransferStore.getState().toggleSelect(2)
+            expect(useTransferStore.getState().selectionAnchor).toBe(2)
+        })
+
+        it('selectRange selects the run between anchor and target in grid order', () => {
+            // Grid order: grouped first (group asc), then ungrouped newest first
+            useTransferStore.setState({
+                transfers: [
+                    transfer({ id: 1, group: 2 }),
+                    transfer({ id: 2, group: null, created_at: '2025-03-01T00:00:00Z' }),
+                    transfer({ id: 3, group: null, created_at: '2025-02-01T00:00:00Z' }),
+                    transfer({ id: 4, group: null, created_at: '2025-01-01T00:00:00Z' }),
+                ],
+                selectionAnchor: 2,
+            })
+            // Order is [1(grouped), 2, 3, 4]; range 2 -> 4 crosses the bucket
+            useTransferStore.getState().selectRange(4)
+            expect(useTransferStore.getState().selected).toEqual([2, 3, 4])
+        })
+
+        it('selectRange with no valid anchor falls back to selectOnly', () => {
+            useTransferStore.setState({
+                transfers: [transfer({ id: 1 }), transfer({ id: 2, created_at: '2025-02-01T00:00:00Z' })],
+                selectionAnchor: null,
+            })
+            useTransferStore.getState().selectRange(2)
+            const s = useTransferStore.getState()
+            expect(s.selected).toEqual([2])
+            expect(s.selectionAnchor).toBe(2)
+        })
+
+        it('fetch clears a stale selection anchor', async () => {
+            vi.stubGlobal('fetch', mockFetch({
+                '/usage': { ok: true, body: usage },
+                '/api/transfers': { ok: true, body: [transfer({ id: 2 })] },
+            }))
+            useTransferStore.setState({ selected: [2], selectionAnchor: 9 })
+
+            await useTransferStore.getState().fetch()
+
+            expect(useTransferStore.getState().selectionAnchor).toBeNull()
+            vi.unstubAllGlobals()
         })
     })
 

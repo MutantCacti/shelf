@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
     LuImage, LuFileText, LuFileCode, LuFileTerminal,
     LuFileArchive, LuFile, LuCheck, LuFileAudio, LuFileVideo,
@@ -6,6 +6,9 @@ import {
 } from 'react-icons/lu'
 import { Transfer } from '../types/types'
 import useTransferStore from '../stores/TransferStore'
+import { groupColor } from '../lib/groups'
+import { RichText } from '../lib/richtext'
+import { copyRichText } from '../lib/clipboard'
 
 const RADIUS = '8px'
 
@@ -84,7 +87,7 @@ function getLabel(t: Transfer) {
 
 function ImageItem({ transfer, dim, onClick, onDoubleClick }: {
     transfer: Transfer, dim: string,
-    onClick: () => void, onDoubleClick: () => void,
+    onClick: (e: React.MouseEvent) => void, onDoubleClick: () => void,
 }) {
     return (
         <button
@@ -113,7 +116,7 @@ function ImageItem({ transfer, dim, onClick, onDoubleClick }: {
 
 function TextItem({ transfer, dim, iconSize, copied, onClick, onDoubleClick }: {
     transfer: Transfer, dim: string, iconSize: number, copied: boolean,
-    onClick: () => void, onDoubleClick: () => void,
+    onClick: (e: React.MouseEvent) => void, onDoubleClick: () => void,
 }) {
     return (
         <button
@@ -129,10 +132,10 @@ function TextItem({ transfer, dim, iconSize, copied, onClick, onDoubleClick }: {
                 </span>
             ) : (
                 <span
-                    className="text-xs text-text text-left w-full h-full p-3 overflow-hidden wrap-break-word leading-relaxed"
+                    className="text-xs text-text text-left w-full h-full p-3 overflow-hidden whitespace-pre-wrap wrap-break-word leading-relaxed"
                     style={{ maskImage: 'linear-gradient(to bottom, black calc(80% - 1.5rem), transparent 100%)' }}
                 >
-                    {transfer.content}
+                    <RichText content={transfer.content} />
                 </span>
             )}
         </button>
@@ -141,7 +144,7 @@ function TextItem({ transfer, dim, iconSize, copied, onClick, onDoubleClick }: {
 
 function FileItem({ transfer, dim, iconSize, onClick, onDoubleClick }: {
     transfer: Transfer, dim: string, iconSize: number,
-    onClick: () => void, onDoubleClick: () => void,
+    onClick: (e: React.MouseEvent) => void, onDoubleClick: () => void,
 }) {
     const Icon = getIcon(transfer)
     return (
@@ -161,95 +164,25 @@ function FileItem({ transfer, dim, iconSize, onClick, onDoubleClick }: {
     )
 }
 
-function EditItem({ transfer, dim, editValue, setEditValue, editRef, onKeyDown, onCommitEdit, onCancelEdit }: {
-    transfer: Transfer, dim: string,
-    editValue: string, setEditValue: (v: string) => void,
-    editRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>,
-    onKeyDown: (e: React.KeyboardEvent) => void,
-    onCommitEdit?: (v: string) => void, onCancelEdit?: () => void,
-}) {
-    function handleBlur() {
-        const trimmed = editValue.trim()
-        if (trimmed) onCommitEdit?.(trimmed)
-        else onCancelEdit?.()
-    }
-
-    return (
-        <div className="relative flex items-center justify-center bg-surface border border-accent/40"
-             style={{ width: dim, height: dim, borderRadius: RADIUS }}>
-            {transfer.type === 'text' ? (
-                <textarea
-                    ref={editRef as React.RefObject<HTMLTextAreaElement>}
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
-                    onKeyDown={onKeyDown}
-                    onBlur={handleBlur}
-                    className="w-full h-full p-3 text-xs text-text bg-transparent resize-none outline-none"
-                />
-            ) : (
-                <input
-                    ref={editRef as React.RefObject<HTMLInputElement>}
-                    type="text"
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
-                    onKeyDown={onKeyDown}
-                    onBlur={handleBlur}
-                    className="w-full px-3 text-xs text-text text-center bg-transparent outline-none"
-                />
-            )}
-        </div>
-    )
-}
-
 // --- Main component ---
 
 interface TransferItemProps {
     transfer: Transfer
     size?: number
-    editing?: boolean
-    onStartEdit?: () => void
-    onCommitEdit?: (newContent: string) => void
-    onCancelEdit?: () => void
 }
 
-export default function TransferItem({ transfer, size = 100, editing, onStartEdit, onCommitEdit, onCancelEdit }: TransferItemProps) {
-    const { selected, toggleSelect } = useTransferStore()
+export default function TransferItem({ transfer, size = 100 }: TransferItemProps) {
+    const { selected, selectOnly, toggleSelect, selectRange, download } = useTransferStore()
     const [copied, setCopied] = useState(false)
-    const [editValue, setEditValue] = useState(transfer.content)
-    const editRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
     const isSelected = selected.includes(transfer.id)
     const iconSize = Math.round(size * 0.4)
     const fileIconSize = Math.round(size * 0.25)
     const dim = `${size}px`
 
     function copyText() {
-        navigator.clipboard.writeText(transfer.content)
+        copyRichText(transfer.content)
         setCopied(true)
         setTimeout(() => setCopied(false), 1200)
-    }
-
-    useEffect(() => {
-        if (editing && editRef.current) {
-            setEditValue(transfer.content)
-            editRef.current.focus()
-            editRef.current.select()
-        }
-    }, [editing])
-
-    function handleContextMenu(e: React.MouseEvent) {
-        e.preventDefault()
-        onStartEdit?.()
-    }
-
-    function handleEditKeyDown(e: React.KeyboardEvent) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault()
-            const trimmed = editValue.trim()
-            if (trimmed) onCommitEdit?.(trimmed)
-        } else if (e.key === 'Escape') {
-            onCancelEdit?.()
-        }
-        e.stopPropagation()
     }
 
     useEffect(() => {
@@ -260,12 +193,25 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
         return () => window.removeEventListener('shelf:copy', onCopy)
     }, [transfer.id])
 
-    function handleClick() {
-        toggleSelect(transfer.id)
+    function handleClick(e: React.MouseEvent) {
+        // Touch keeps additive taps: there are no modifier keys to multi-select with
+        if (window.matchMedia?.('(hover: none)').matches) {
+            toggleSelect(transfer.id)
+            return
+        }
+        if (e.shiftKey) selectRange(transfer.id)
+        else if (e.ctrlKey || e.metaKey) toggleSelect(transfer.id)
+        else selectOnly(transfer.id)
     }
 
     function handleDoubleClick() {
         window.dispatchEvent(new CustomEvent('shelf:preview', { detail: transfer.id }))
+    }
+
+    function handleContextMenu(e: React.MouseEvent) {
+        e.preventDefault()
+        if (transfer.type === 'text') copyText()
+        else download(transfer.id)
     }
 
     function handleDragStart(e: React.DragEvent) {
@@ -279,11 +225,7 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
     }
 
     let content
-    if (editing) {
-        content = <EditItem transfer={transfer} dim={dim} editValue={editValue}
-                            setEditValue={setEditValue} editRef={editRef}
-                            onKeyDown={handleEditKeyDown} onCommitEdit={onCommitEdit} onCancelEdit={onCancelEdit} />
-    } else if (isImage(transfer)) {
+    if (isImage(transfer)) {
         content = <ImageItem transfer={transfer} dim={dim}
                              onClick={handleClick} onDoubleClick={handleDoubleClick} />
     } else if (transfer.type === 'text') {
@@ -295,10 +237,14 @@ export default function TransferItem({ transfer, size = 100, editing, onStartEdi
     }
 
     return (
-        <div className={`glow-wrap${isSelected ? ' active' : ''}`} data-transfer-id={transfer.id}
-             style={{ borderRadius: RADIUS }}
+        <div className={`glow-wrap${isSelected ? ' active' : ''}${transfer.group != null ? ' group-tinted' : ''}`}
+             data-transfer-id={transfer.id}
+             style={{
+                 borderRadius: RADIUS,
+                 ...(transfer.group != null && { '--group-color': groupColor(transfer.group) } as React.CSSProperties),
+             }}
              title={transfer.type === 'file' ? transfer.content : undefined}
-             draggable={!editing}
+             draggable
              onDragStart={handleDragStart}
              onContextMenu={handleContextMenu}>
             {content}

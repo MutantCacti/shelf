@@ -13,9 +13,9 @@ export default function DownloadButton() {
         <button
             onClick={handleClick}
             disabled={!hasFiles}
-            className={`ml-1 transition-all rounded-full cursor-pointer ${
+            className={`ml-1 transition-all rounded-full p-1 cursor-pointer ${
                 hasFiles
-                    ? 'text-accent hover:text-accent-light focus-visible:text-accent-light hover-glow hover:-translate-y-0.5 focus-visible:-translate-y-0.5'
+                    ? 'text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light hover:scale-110 focus-visible:scale-110'
                     : 'text-text-muted opacity-50'
             }`}
             title="Download selected"

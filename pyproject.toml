@@ -4,18 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shelf-scripts"
-version = "0.0.0"  # unversioned, installed locally only
+version = "1.5"  # installed locally only
 description = "Cross-platform development scripts for Shelf"
 requires-python = ">=3.12"
 dependencies = [
     "psutil>=5.9",
     "termcolor>=3.1",
-]
-
-[project.optional-dependencies]
-test = [
-    "pytest>=7.0",
-    "pytest-playwright>=0.7",
 ]
 
 [project.scripts]

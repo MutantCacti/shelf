@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { login, clearTransfers } from "./helpers"
+import { useCleanGrid } from "./helpers"
 import path from "path"
 import fs from "fs"
 import os from "os"
@@ -16,12 +16,7 @@ test.describe("file upload happy path", () => {
         if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile)
     })
 
-    test.beforeEach(async ({ page }) => {
-        await login(page)
-        await clearTransfers(page)
-        await page.reload()
-        await page.getByTestId("transfer-grid").waitFor()
-    })
+    useCleanGrid()
 
     test("upload a file and see it in the grid", async ({ page }) => {
         const fileInput = page.locator("#upload-input").first()

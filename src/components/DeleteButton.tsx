@@ -9,9 +9,9 @@ export default function DeleteButton({ onDelete }: { onDelete: () => void }) {
         <button
             onClick={active ? onDelete : undefined}
             disabled={!active}
-            className={`ml-1 mr-1.75 transition-all rounded-full cursor-pointer ${
+            className={`ml-1 mr-1.75 transition-all rounded-full p-1 cursor-pointer ${
                 active
-                    ? 'text-red-400 hover:text-red-300 focus-visible:text-red-300 hover-glow'
+                    ? 'text-red-400 btn-matte btn-matte-red btn-matte-active hover:text-red-300 focus-visible:text-red-300 hover:scale-110 focus-visible:scale-110'
                     : 'text-text-muted opacity-50'
             }`}
             title="Delete selected"

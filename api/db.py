@@ -32,5 +32,19 @@ def get_session():
 
 
 def init_db():
-    """Create all tables."""
+    """Create all tables and apply lightweight migrations."""
     Base.metadata.create_all(engine)
+    migrate_db()
+
+
+def migrate_db(target_engine=None):
+    """Add columns missing from databases created before they existed.
+
+    create_all() never alters existing tables, so pre-existing databases
+    need explicit ALTERs. Each is guarded by a pragma check, making this
+    safe to run on every startup.
+    """
+    with (target_engine or engine).begin() as conn:
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(transfers)")}
+        if "group" not in cols:
+            conn.exec_driver_sql('ALTER TABLE transfers ADD COLUMN "group" INTEGER')

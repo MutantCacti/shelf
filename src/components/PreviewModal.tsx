@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
-import { LuDownload, LuX, LuFile, LuClipboard, LuCheck } from 'react-icons/lu'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { LuDownload, LuX, LuFile, LuClipboard, LuCheck, LuPencil } from 'react-icons/lu'
 import { Transfer } from '../types/types'
 import useTransferStore from '../stores/TransferStore'
+import { RichText } from '../lib/richtext'
+import { copyRichText } from '../lib/clipboard'
+import { groupColor } from '../lib/groups'
 
 const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico', 'bmp', 'tiff'])
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'mov', 'm4v', 'mkv', 'avi'])
@@ -39,7 +42,6 @@ function ImageViewer({ src, alt }: { src: string, alt: string }) {
     scaleRef.current = scale
     posRef.current = pos
 
-    // Clamp pan offset so the image edges never leave the viewer.
     function clampPos(s: number, x: number, y: number): { x: number, y: number } {
         const container = containerRef.current
         const img = imgRef.current
@@ -48,7 +50,6 @@ function ImageViewer({ src, alt }: { src: string, alt: string }) {
         }
         const vw = container.clientWidth
         const vh = container.clientHeight
-        // object-contain rendered size at scale 1
         const fitRatio = Math.min(vw / img.naturalWidth, vh / img.naturalHeight)
         const renderedW = img.naturalWidth * fitRatio
         const renderedH = img.naturalHeight * fitRatio
@@ -60,7 +61,6 @@ function ImageViewer({ src, alt }: { src: string, alt: string }) {
         }
     }
 
-    // Ctrl+wheel zoom — attach as non-passive so preventDefault works
     useEffect(() => {
         const el = containerRef.current
         if (!el) return
@@ -143,25 +143,83 @@ function ImageViewer({ src, alt }: { src: string, alt: string }) {
 interface PreviewModalProps {
     transfer: Transfer
     onClose: () => void
+    startInEdit?: boolean
+    anchor?: { x: number, y: number } | null
 }
 
-export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
+export default function PreviewModal({ transfer, onClose, startInEdit = false, anchor }: PreviewModalProps) {
     const [visible, setVisible] = useState(false)
     const [textContent, setTextContent] = useState<string | null>(null)
     const [textError, setTextError] = useState<string | null>(null)
     const [copied, setCopied] = useState(false)
+    const [editing, setEditing] = useState(startInEdit)
+    const [editValue, setEditValue] = useState(transfer.content)
+    const [editingWidth, setEditingWidth] = useState<number | null>(null)
+    const [pos, setPos] = useState<{ left: number, top: number } | null>(null)
     const mouseDownOnBackdrop = useRef(false)
+    const cardRef = useRef<HTMLDivElement>(null)
+    const editRef = useRef<HTMLElement | null>(null)
     const download = useTransferStore(s => s.download)
+    const rename = useTransferStore(s => s.rename)
 
     function copyTextContent() {
-        navigator.clipboard.writeText(transfer.content)
+        copyRichText(transfer.content)
         setCopied(true)
         setTimeout(() => setCopied(false), 1200)
+    }
+
+    function readEditValue(): string {
+        const el = editRef.current
+        if (!el) return editValue
+        if (el instanceof HTMLInputElement) return el.value
+        return (el as HTMLDivElement).innerText ?? el.textContent ?? ''
+    }
+
+    function startEdit() {
+        if (cardRef.current) setEditingWidth(cardRef.current.offsetWidth)
+        setEditValue(transfer.content)
+        setEditing(true)
+    }
+
+    function commitEdit() {
+        const trimmed = readEditValue().trim()
+        if (trimmed && trimmed !== transfer.content) rename(transfer.id, trimmed)
+        setEditing(false)
+        setEditingWidth(null)
+    }
+
+    function cancelEdit() {
+        setEditValue(transfer.content)
+        setEditing(false)
+        setEditingWidth(null)
     }
 
     useEffect(() => {
         requestAnimationFrame(() => setVisible(true))
     }, [])
+
+    useEffect(() => {
+        if (!editing || !editRef.current) return
+        const el = editRef.current
+        el.focus()
+        if (el instanceof HTMLInputElement) {
+            // Select only the basename: renames rarely mean the extension,
+            // and a dotfile (".env") has no extension to spare.
+            const dot = el.value.lastIndexOf('.')
+            el.setSelectionRange(0, dot > 0 ? dot : el.value.length)
+        } else {
+            el.textContent = transfer.content
+            const range = document.createRange()
+            range.selectNodeContents(el)
+            const sel = window.getSelection()
+            sel?.removeAllRanges()
+            sel?.addRange(range)
+        }
+        // Pin width on entering edit mode (covers both click-pencil and startInEdit/F2 paths).
+        if (cardRef.current && editingWidth == null) {
+            setEditingWidth(cardRef.current.offsetWidth)
+        }
+    }, [editing])
 
     function dismiss() {
         setVisible(false)
@@ -170,11 +228,54 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
 
     useEffect(() => {
         function handleKey(e: KeyboardEvent) {
-            if (e.key === 'Escape') { e.preventDefault(); dismiss() }
+            const target = e.target
+            if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
+                || (target instanceof HTMLElement && target.isContentEditable)) return
+            if (e.key === 'Escape') {
+                e.preventDefault()
+                if (editing) cancelEdit()
+                else dismiss()
+                return
+            }
+            if (editing) return
+            if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                e.preventDefault()
+                if (transfer.type === 'text') copyTextContent()
+                else download(transfer.id)
+                return
+            }
+            if (e.key.toLowerCase() === 'e' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                e.preventDefault()
+                startEdit()
+                return
+            }
         }
         window.addEventListener('keydown', handleKey)
         return () => window.removeEventListener('keydown', handleKey)
-    }, [])
+    }, [editing, transfer])
+
+    function handleEditKeyDown(e: React.KeyboardEvent) {
+        if (e.key === 'Escape') {
+            e.preventDefault()
+            e.stopPropagation()
+            cancelEdit()
+            return
+        }
+        if (e.key !== 'Enter') return
+        const isInput = e.currentTarget.tagName === 'INPUT'
+        if (isInput) {
+            if (!e.shiftKey) {
+                e.preventDefault()
+                e.stopPropagation()
+                commitEdit()
+            }
+        } else if (e.ctrlKey || e.metaKey) {
+            // Multi-line: Ctrl/Cmd+Enter commits; plain Enter inserts newline.
+            e.preventDefault()
+            e.stopPropagation()
+            commitEdit()
+        }
+    }
 
     const ext = transfer.type === 'file' ? getExt(transfer) : ''
     const isText = transfer.type === 'file' && TEXT_EXTS.has(ext)
@@ -196,11 +297,58 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
         return () => { cancelled = true }
     }, [isText, transfer.id, transfer.size, transfer.created_at])
 
+    useLayoutEffect(() => {
+        const el = cardRef.current
+        if (!el || !anchor) { setPos(null); return }
+        const margin = 16
+        function position() {
+            if (!el || !anchor) return
+            // Re-derive the anchor from the item's live position: zoom/resize
+            // reflows the grid, so the coordinates captured at open time go stale.
+            let { x, y } = anchor
+            const item = document.querySelector(`[data-transfer-id="${transfer.id}"]`)
+            if (item) {
+                const rect = item.getBoundingClientRect()
+                x = rect.left + rect.width / 2
+                y = rect.top + rect.height / 2
+            }
+            const w = el.offsetWidth
+            const h = el.offsetHeight
+            const left = Math.max(margin, Math.min(window.innerWidth - w - margin, x - w / 2))
+            const top = Math.max(margin, Math.min(window.innerHeight - h - margin, y - h / 2))
+            setPos({ left, top })
+        }
+        position()
+        const obs = new ResizeObserver(position)
+        obs.observe(el)
+        window.addEventListener('resize', position)
+        return () => {
+            obs.disconnect()
+            window.removeEventListener('resize', position)
+        }
+    }, [anchor, transfer.id])
+
     let body: React.ReactNode
-    if (transfer.type === 'text') {
+    if (editing && transfer.type === 'text') {
         body = (
-            <div className="text-sm text-text whitespace-pre-wrap wrap-break-word">
-                {transfer.content}
+            <div
+                // Keyed: the edit effect writes textContent imperatively, so this
+                // node must never be reused for the RichText view branch.
+                key="edit"
+                ref={editRef as React.RefObject<HTMLDivElement>}
+                contentEditable
+                suppressContentEditableWarning
+                role="textbox"
+                aria-multiline="true"
+                aria-label="Edit"
+                onKeyDown={handleEditKeyDown}
+                className="text-sm text-text whitespace-pre-wrap wrap-break-word outline-none border border-accent/40 rounded"
+            />
+        )
+    } else if (transfer.type === 'text') {
+        body = (
+            <div key="view" className="text-sm text-text whitespace-pre-wrap wrap-break-word border border-transparent rounded">
+                <RichText content={transfer.content} />
             </div>
         )
     } else if (IMAGE_EXTS.has(ext)) {
@@ -255,10 +403,16 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
         )
     }
 
+    const anchored = !!anchor
+    const cardPositionStyle: React.CSSProperties = anchored
+        ? { position: 'fixed', left: pos?.left ?? 0, top: pos?.top ?? 0 }
+        : {}
+    const cardHidden = anchored && pos === null
+
     return (
         <div
             data-testid="preview-modal"
-            className="fixed inset-0 z-50 flex items-center justify-center transition-all duration-150 px-4"
+            className={`fixed inset-0 z-50 transition-all duration-150 ${anchored ? '' : 'flex items-center justify-center px-4'}`}
             style={{ backgroundColor: visible ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0)' }}
             onMouseDown={(e) => { mouseDownOnBackdrop.current = e.target === e.currentTarget }}
             onClick={(e) => {
@@ -267,9 +421,13 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
             }}
         >
             <div
-                className={`bg-surface border border-border rounded-xl ${ext === 'pdf' ? 'w-full' : ''} max-w-2xl max-h-[90vh] flex flex-col transition-all duration-150`}
+                ref={cardRef}
+                className={`relative bg-surface border border-border rounded-xl ${ext === 'pdf' ? 'w-full' : ''} max-w-2xl max-h-[90vh] flex flex-col transition-[opacity,transform] duration-150${transfer.group != null ? ' group-tinted' : ''}`}
                 style={{
-                    opacity: visible ? 1 : 0,
+                    ...cardPositionStyle,
+                    ...(editing && editingWidth != null ? { width: `${editingWidth}px` } : {}),
+                    ...(transfer.group != null && { '--group-color': groupColor(transfer.group) } as React.CSSProperties),
+                    opacity: visible && !cardHidden ? 1 : 0,
                     transform: visible ? 'scale(1)' : 'scale(0.95)',
                 }}
                 onClick={e => e.stopPropagation()}
@@ -277,42 +435,79 @@ export default function PreviewModal({ transfer, onClose }: PreviewModalProps) {
                 <header className="flex items-center justify-between gap-4 px-5 py-3 border-b border-border/40">
                     <div className="flex flex-col min-w-0 flex-1">
                         {transfer.type === 'file' && (
-                            <>
-                                <span className="text-sm text-text truncate">{transfer.content}</span>
-                                {transfer.size != null && (
-                                    <span className="text-xs text-text-muted">{formatSize(transfer.size)}</span>
-                                )}
-                            </>
+                            editing ? (
+                                <input
+                                    ref={editRef as React.RefObject<HTMLInputElement>}
+                                    type="text"
+                                    value={editValue}
+                                    onChange={e => setEditValue(e.target.value)}
+                                    onKeyDown={handleEditKeyDown}
+                                    aria-label="Edit"
+                                    className="text-sm text-text bg-transparent outline-none border border-accent/40 rounded px-2 py-1"
+                                />
+                            ) : (
+                                <>
+                                    <span className="text-sm text-text truncate">{transfer.content}</span>
+                                    {transfer.size != null && (
+                                        <span className="text-xs text-text-muted">{formatSize(transfer.size)}</span>
+                                    )}
+                                </>
+                            )
                         )}
                     </div>
-                    <div className="inline-flex items-center gap-3 shrink-0">
-                        {transfer.type === 'text' ? (
+                    <div className="inline-flex items-center gap-2 shrink-0">
+                        {editing ? (
                             <button
-                                id="preview-copy"
-                                onClick={copyTextContent}
-                                aria-label="Copy"
-                                title="Copy"
-                                className="cursor-pointer transition-all rounded-full text-accent hover:text-accent-light focus-visible:text-accent-light hover-glow hover:-translate-y-0.5 focus-visible:-translate-y-0.5"
+                                id="preview-save"
+                                onClick={commitEdit}
+                                aria-label="Save"
+                                title="Save"
+                                className="cursor-pointer transition-all rounded-full p-1 text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light hover:scale-110 focus-visible:scale-110"
                             >
-                                {copied ? <LuCheck size={20} /> : <LuClipboard size={20} />}
+                                <LuCheck size={20} />
                             </button>
                         ) : (
-                            <button
-                                id="preview-download"
-                                onClick={() => download(transfer.id)}
-                                aria-label="Download"
-                                title="Download"
-                                className="cursor-pointer transition-all rounded-full text-accent hover:text-accent-light focus-visible:text-accent-light hover-glow hover:-translate-y-0.5 focus-visible:-translate-y-0.5"
-                            >
-                                <LuDownload size={20} />
-                            </button>
+                            <>
+                                <button
+                                    id="preview-edit"
+                                    onClick={startEdit}
+                                    aria-label="Edit"
+                                    title="Edit"
+                                    className="cursor-pointer transition-all rounded-full p-1 text-text-muted btn-matte hover:text-text focus-visible:text-text hover:scale-110 focus-visible:scale-110"
+                                >
+                                    <LuPencil size={18} />
+                                </button>
+                                {transfer.type === 'text' ? (
+                                    <button
+                                        id="preview-copy"
+                                        onClick={copyTextContent}
+                                        aria-label="Copy"
+                                        title="Copy"
+                                        className="cursor-pointer transition-all rounded-full p-1 text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light hover:scale-110 focus-visible:scale-110"
+                                    >
+                                        {copied
+                                            ? <LuCheck size={20} className="text-accent-light animate-copied" />
+                                            : <LuClipboard size={20} />}
+                                    </button>
+                                ) : (
+                                    <button
+                                        id="preview-download"
+                                        onClick={() => download(transfer.id)}
+                                        aria-label="Download"
+                                        title="Download"
+                                        className="cursor-pointer transition-all rounded-full p-1 text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light hover:scale-110 focus-visible:scale-110"
+                                    >
+                                        <LuDownload size={20} />
+                                    </button>
+                                )}
+                            </>
                         )}
                         <button
                             id="preview-close"
                             onClick={dismiss}
                             aria-label="Close"
                             title="Close"
-                            className="cursor-pointer transition-all rounded-full text-red-400 hover:text-red-300 focus-visible:text-red-300 hover-glow"
+                            className="cursor-pointer transition-all rounded-full p-1 text-red-400 btn-matte btn-matte-red hover:text-red-300 focus-visible:text-red-300 hover:scale-110 focus-visible:scale-110"
                         >
                             <LuX size={20} />
                         </button>

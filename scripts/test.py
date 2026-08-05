@@ -8,11 +8,28 @@ import time
 
 from .utils import (
     ROOT, API, LABELS, TEST_PORTS, TEST_PASSWORD, TEST_DATA_DIR,
-    get_venv_python, get_npm_cmd, get_api_env, fix_cmd, run, wait_for_service,
+    get_venv_python, get_npm_cmd, fix_cmd, playwright_browsers_installed,
+    run, wait_for_service,
 )
+from termcolor import colored
 
 
 e2e_processes: list[subprocess.Popen] = []
+
+
+def print_usage() -> None:
+    """Print a help message for this script."""
+    print(colored("Shelf-test options\n", attrs=["bold"]))
+    options = [
+        ("shelf-test", "Run all tests (api + frontend + e2e)"),
+        ("shelf-test api", "Run api unit tests only"),
+        ("shelf-test frontend", "Run frontend unit tests only"),
+        ("shelf-test unit", "Run api and frontend unit tests together"),
+        ("shelf-test e2e", "Run end-to-end tests only; passes additional --flags to playwright"),
+        ("shelf-test e2e --headed", "Run end-to-end tests in headed mode")
+    ]
+    for cmd, desc in options:
+        print(f"  {colored(cmd, 'green'):33s} {desc}")
 
 
 def test_api_unit() -> bool:
@@ -39,7 +56,13 @@ def start_test_services() -> bool:
     """Start API and frontend in test mode for e2e tests."""
     print("\nStarting test mode services...")
 
-    test_env = {**os.environ, **get_api_env(), "SHELF_TEST": "1"}
+    # Set SHELF_DATA_DIR explicitly: get_api_env() reads SHELF_TEST from this
+    # process, which is not in test mode, so it cannot supply it for the child.
+    test_env = {
+        **os.environ,
+        "SHELF_TEST": "1",
+        "SHELF_DATA_DIR": str(TEST_DATA_DIR),
+    }
     TEST_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     # Seed test user
@@ -128,6 +151,12 @@ def test_e2e(extra_args: list[str] | None = None) -> bool:
         print("No e2e/ directory found, skipping e2e tests.")
         return True
 
+    if playwright_browsers_installed() is False:
+        print("Playwright browsers not installed.", file=sys.stderr)
+        print("Run shelf-install and answer Yes at the Playwright prompt", file=sys.stderr)
+        print("(or run: npx playwright install chromium).", file=sys.stderr)
+        return False
+
     if not start_test_services():
         return False
 
@@ -136,7 +165,7 @@ def test_e2e(extra_args: list[str] | None = None) -> bool:
         playwright_args = list(extra_args or [])
         is_headed = "--headed" in playwright_args
         if not is_headed and not any(a.startswith("--workers") for a in playwright_args):
-            playwright_args.append("--workers=6")
+            playwright_args.append("--workers=1") # suite is not parallel-safe
         if playwright_args:
             cmd += ["--", *playwright_args]
         result = run(cmd, cwd=ROOT, check=False)
@@ -161,12 +190,20 @@ def main() -> None:
     commands = [a for a in args if not a.startswith("-")]
     extra_args = [a for a in args if a.startswith("-")]
 
-    run_unit = not commands or "unit" in commands
-    run_e2e = not commands or "e2e" in commands
+    if not commands:
+        run_api, run_frontend, run_e2e = (True, True, True)
+    else:
+        if "help" in commands:
+            print_usage()
+            sys.exit(0)
+        run_api = "unit" in commands or "api" in commands
+        run_frontend = "unit" in commands or "frontend" in commands
+        run_e2e = "e2e" in commands
 
     suites = []
-    if run_unit:
+    if run_api:
         suites.append((LABELS["api"], "UNIT", test_api_unit))
+    if run_frontend:
         suites.append((LABELS["frontend"], "UNIT", test_frontend_unit))
     if run_e2e:
         suites.append(("E2E", "E2E", lambda: test_e2e(extra_args)))

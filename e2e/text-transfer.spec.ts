@@ -1,13 +1,8 @@
 import { test, expect } from "@playwright/test"
-import { login, clearTransfers } from "./helpers"
+import { useCleanGrid } from "./helpers"
 
 test.describe("text transfer happy path", () => {
-    test.beforeEach(async ({ page }) => {
-        await login(page)
-        await clearTransfers(page)
-        await page.reload()
-        await page.getByTestId("transfer-grid").waitFor()
-    })
+    useCleanGrid()
 
     test("create a text transfer via the input", async ({ page }) => {
         await page.getByPlaceholder("Send text").fill("Hello world!")
@@ -15,5 +10,22 @@ test.describe("text transfer happy path", () => {
 
         const item = page.locator("[data-transfer-id]").first()
         await expect(item).toContainText("Hello world!")
+    })
+
+    test("urls render as links and a leading TODO is highlighted", async ({ page }) => {
+        await page.getByPlaceholder("Send text").fill("TODO read https://example.com today")
+        await page.getByPlaceholder("Send text").press("Enter")
+
+        const item = page.locator("[data-transfer-id]").first()
+        const link = item.getByRole("link")
+        await expect(link).toHaveAttribute("href", "https://example.com")
+        await expect(link).toHaveAttribute("target", "_blank")
+        await expect(item.getByText("TODO", { exact: true })).toBeVisible()
+
+        // Clicking the link must not toggle card selection
+        const popup = page.waitForEvent("popup")
+        await link.click()
+        await (await popup).close()
+        await expect(page.getByTitle("Group colours")).toHaveCount(0)
     })
 })

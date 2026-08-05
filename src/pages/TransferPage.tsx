@@ -4,12 +4,35 @@ import ConfirmModal from '../components/ConfirmModal'
 import PreviewModal from '../components/PreviewModal'
 import useTransferStore from '../stores/TransferStore'
 import useAuthStore from '../stores/AuthStore'
+import { keyToGroup } from '../lib/groups'
+import { connectEvents } from '../lib/sse'
+import { copyRichText, htmlToStructuredText } from '../lib/clipboard'
 import ToastContainer from '../components/Toast'
+
+type Anchor = { x: number, y: number }
+
+function anchorForId(id: number): Anchor | null {
+    const el = document.querySelector(`[data-transfer-id="${id}"]`)
+    if (!el) return null
+    const rect = (el as HTMLElement).getBoundingClientRect()
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+}
+
+function anchorForIds(ids: number[]): Anchor | null {
+    const anchors = ids.map(anchorForId).filter((a): a is Anchor => a !== null)
+    if (anchors.length === 0) return null
+    const sx = anchors.reduce((acc, a) => acc + a.x, 0) / anchors.length
+    const sy = anchors.reduce((acc, a) => acc + a.y, 0) / anchors.length
+    return { x: sx, y: sy }
+}
 
 export default function TransferPage({ onHelp }: { onHelp: () => void }) {
     const { batchRemove, clearSelection, transfers } = useTransferStore()
     const [showConfirm, setShowConfirm] = useState(false)
     const [previewId, setPreviewId] = useState<number | null>(null)
+    const [previewEdit, setPreviewEdit] = useState(false)
+    const [previewAnchor, setPreviewAnchor] = useState<Anchor | null>(null)
+    const [deleteAnchor, setDeleteAnchor] = useState<Anchor | null>(null)
 
     const [deleteTargets, setDeleteTargets] = useState<number[]>([])
 
@@ -26,8 +49,16 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
     }
 
+    function openDelete(ids: number[]) {
+        setDeleteTargets(ids)
+        setDeleteAnchor(anchorForIds(ids))
+        setShowConfirm(true)
+    }
+
     const handlePaste = useCallback((e: ClipboardEvent) => {
-        if (e.target instanceof HTMLInputElement) return
+        if (showConfirm || previewId != null) return
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
+            || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
         const { transfers } = useTransferStore.getState()
         const files = Array.from(e.clipboardData?.files ?? [])
         if (files.length > 0) {
@@ -36,11 +67,13 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
                 if (dup) { nudgeDuplicate(dup.id) } else { uploadFile(f) }
             })
         } else {
-            const text = e.clipboardData?.getData('text/plain')
+            const html = e.clipboardData?.getData('text/html')
+            const structured = html ? htmlToStructuredText(html) : ''
+            const text = structured || e.clipboardData?.getData('text/plain')
             if (!text) return
             createText(text).then(dupId => { if (dupId) nudgeDuplicate(dupId) })
         }
-    }, [uploadFile, createText])
+    }, [uploadFile, createText, showConfirm, previewId])
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (showConfirm || previewId != null) return
@@ -60,10 +93,7 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
         }
         if ((e.key === 'Delete' || e.key === 'Backspace') && !(e.target instanceof HTMLInputElement)) {
             const { selected } = useTransferStore.getState()
-            if (selected.length > 0) {
-                setDeleteTargets(selected)
-                setShowConfirm(true)
-            }
+            if (selected.length > 0) openDelete(selected)
             return
         }
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -83,7 +113,7 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
                 const t = transfers.find(t => t.id === selected[0])
                 if (t && t.type === 'text') {
                     e.preventDefault()
-                    navigator.clipboard.writeText(t.content)
+                    copyRichText(t.content)
                     window.dispatchEvent(new CustomEvent('shelf:copy', { detail: t.id }))
                 }
             }
@@ -117,6 +147,16 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
             }
             return
         }
+        // Number keys colour-group the selection (1-9 set the group, 0 clears it)
+        if (/^[0-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey
+            && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+            const { selected, applyGroup } = useTransferStore.getState()
+            if (selected.length > 0) {
+                e.preventDefault()
+                applyGroup(selected, keyToGroup(e.key))
+                return
+            }
+        }
         // Redirect printable keystrokes to text input
         if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
             clearSelection()
@@ -133,12 +173,35 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
         }
     }, [handleKeyDown, handlePaste])
 
+    // Live refresh: other devices' mutations ping this tab, which refetches.
+    // TransferPage unmounts on logout, closing the stream.
+    useEffect(() => {
+        const conn = connectEvents({
+            url: '/api/transfers/events',
+            onPing: () => useTransferStore.getState().fetch(),
+        })
+        return () => conn.close()
+    }, [])
+
     useEffect(() => {
         function onPreview(e: Event) {
-            setPreviewId((e as CustomEvent).detail)
+            const id = (e as CustomEvent).detail
+            setPreviewId(id)
+            setPreviewEdit(false)
+            setPreviewAnchor(anchorForId(id))
+        }
+        function onRename(e: Event) {
+            const id = (e as CustomEvent).detail
+            setPreviewId(id)
+            setPreviewEdit(true)
+            setPreviewAnchor(anchorForId(id))
         }
         window.addEventListener('shelf:preview', onPreview)
-        return () => window.removeEventListener('shelf:preview', onPreview)
+        window.addEventListener('shelf:rename', onRename)
+        return () => {
+            window.removeEventListener('shelf:preview', onPreview)
+            window.removeEventListener('shelf:rename', onRename)
+        }
     }, [])
 
     function handleConfirm() {
@@ -152,15 +215,13 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
         <div className="relative flex flex-col h-screen">
             <TransferGrid onHelp={onHelp} onDelete={() => {
                 const { selected } = useTransferStore.getState()
-                if (selected.length > 0) {
-                    setDeleteTargets(selected)
-                    setShowConfirm(true)
-                }
+                if (selected.length > 0) openDelete(selected)
             }} />
             <ToastContainer />
             {showConfirm && (
                 <ConfirmModal
                     message={deleteTargets.length === 1 ? 'Delete this item?' : `Delete ${deleteTargets.length} items?`}
+                    anchor={deleteAnchor}
                     onConfirm={handleConfirm}
                     onCancel={() => setShowConfirm(false)}
                 />
@@ -168,6 +229,8 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
             {previewTransfer && (
                 <PreviewModal
                     transfer={previewTransfer}
+                    startInEdit={previewEdit}
+                    anchor={previewAnchor}
                     onClose={() => setPreviewId(null)}
                 />
             )}

@@ -54,7 +54,7 @@ def _cleanup_expired_sessions():
 cors_config = CORSConfig(
     allow_origins=["https://shelf.mutantcacti.com"],
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Shelf-Client"],
     allow_credentials=True,
 )
 

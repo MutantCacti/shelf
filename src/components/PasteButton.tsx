@@ -42,7 +42,7 @@ export default function PasteButton() {
     return (
         <button
             onClick={handlePaste}
-            className="sm:pl-2 max-sm:pl-1 py-2 text-text-muted hover:text-accent focus-visible:text-accent hover-glow transition-colors rounded-full cursor-pointer"
+            className="text-text-muted btn-matte hover:text-accent focus-visible:text-accent transition-all rounded-full p-1 cursor-pointer hover:scale-110 focus-visible:scale-110"
             title="Paste from clipboard"
         >
             <LuClipboardPaste size={20} />

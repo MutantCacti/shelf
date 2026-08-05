@@ -30,7 +30,10 @@
     font-display: swap;
 }
 
-@theme {
+/* Static: some variables are only referenced dynamically at runtime
+   (e.g. var(--color-group-${n}) built in JS), which Tailwind's scanner
+   can't see — without `static` it prunes them from the output. */
+@theme static {
     --breakpoint-sm: 480px;
     --font-sans: 'Figtree', sans-serif;
     --font-mono: 'Google Sans Code', monospace;
@@ -39,16 +42,37 @@
     --color-accent-light: #35c492;
     --color-accent-dark: #1a7d5c;
     --color-accent-subtle: #ddf1ea;
+    --color-accent-bright: #46c882;
+
+    --color-danger: #f87171;
+    --color-danger-light: #fc826e;
+    --color-danger-dark: #b45a5a;
 
     --color-secondary: #d9b435;
     --color-secondary-light: #e3c75e;
     --color-highlight: #6ab0de;
+    /* Resting link blue; readable on every group tint (highlight stays the
+       hover/focus colour) */
+    --color-link: #7cb8ff;
 
-    --color-bg: #0c100e;
-    --color-surface: #1a201e;
-    --color-border: #2e3533;
-    --color-text: #dbe2e0;
-    --color-text-muted: #838e8b;
+    /* "Slate" ground: cool neutrals under the green accent, only a hint of blue */
+    --color-bg: #0d1013;
+    --color-surface: #161b20;
+    --color-border: #2f343c;
+    --color-text: #e5e9ed;
+    --color-text-muted: #8d949e;
+
+    /* Colour groups 1-9; every 30% tint on --color-surface keeps >= 4.5:1
+       contrast with --color-text, --color-secondary and --color-link */
+    --color-group-1: #e5484d;
+    --color-group-2: #f76b15;
+    --color-group-3: #dba934;
+    --color-group-4: #46b03a;
+    --color-group-5: #00b3d0;
+    --color-group-6: #3f8ef7;
+    --color-group-7: #7c66dc;
+    --color-group-8: #d6409f;
+    --color-group-9: #8f9491;
 }
 
 html {
@@ -101,8 +125,24 @@ textarea:focus-visible {
     transition: background-color 0.15s ease-out, transform 0.3s ease-out, box-shadow 0.3s ease-out;
 }
 
+/* Selection glow follows the item's group colour, falling back to accent */
 .glow-wrap.active {
-    background-color: rgba(35, 166, 122, 0.08);
+    background-color: color-mix(in srgb, var(--group-color, var(--color-accent)) 8%, transparent);
+}
+
+/* Colour-group tint: mixed into the card's own background so text, icons and
+   media stay untinted — image cards only show it through the bottom fade */
+.group-tinted > .bg-surface,
+.group-tinted.bg-surface {
+    background-color: color-mix(in srgb, var(--group-color) 30%, var(--color-surface));
+}
+
+.group-tinted > .bg-bg {
+    background-color: color-mix(in srgb, var(--group-color) 30%, var(--color-bg));
+}
+
+.group-tinted {
+    border-color: color-mix(in srgb, var(--group-color) 45%, var(--color-border));
 }
 
 .glow-wrap.active::after {
@@ -111,15 +151,16 @@ textarea:focus-visible {
     inset: 0;
     border-radius: inherit;
     padding: 2px;
+    --ring-base: var(--group-color, var(--color-accent));
     background: conic-gradient(
         from var(--gradient-angle),
-        var(--color-accent-dark),
-        var(--color-accent),
-        var(--color-accent-light),
-        var(--color-accent-dark),
-        var(--color-accent),
-        var(--color-accent-light),
-        var(--color-accent-dark)
+        color-mix(in srgb, var(--ring-base) 75%, black),
+        var(--ring-base),
+        color-mix(in srgb, var(--ring-base) 85%, white),
+        color-mix(in srgb, var(--ring-base) 75%, black),
+        var(--ring-base),
+        color-mix(in srgb, var(--ring-base) 85%, white),
+        color-mix(in srgb, var(--ring-base) 75%, black)
     );
     animation: gradient-rotate 4s linear infinite;
     -webkit-mask:
@@ -176,10 +217,8 @@ textarea:focus-visible {
         from var(--gradient-angle),
         var(--color-accent-dark),
         var(--color-accent),
-        var(--color-accent-light),
         var(--color-accent-dark),
         var(--color-accent),
-        var(--color-accent-light),
         var(--color-accent-dark)
     );
     animation: gradient-rotate 8s linear infinite;
@@ -198,7 +237,7 @@ textarea:focus-visible {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: radial-gradient(circle, rgba(26, 125, 92, 0.25) 0%, transparent 70%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-accent-dark) 25%, transparent) 0%, transparent 70%);
     opacity: 0;
     transition: opacity 0.2s ease-out;
     pointer-events: none;
@@ -214,5 +253,66 @@ textarea:focus-visible {
 }
 
 .logout-glow::before {
-    background: radial-gradient(circle, rgba(180, 90, 90, 0.25) 0%, transparent 70%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-danger-dark) 25%, transparent) 0%, transparent 70%);
+}
+
+.btn-matte {
+    position: relative;
+    transition: background-color 0.2s ease-out, color 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.btn-matte::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-accent-bright) 38%, transparent) 0%, transparent 80%);
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+    pointer-events: none;
+}
+
+.btn-matte:hover,
+.btn-matte:focus-visible {
+    background-color: color-mix(in srgb, var(--color-accent-light) 12%, transparent);
+}
+
+.btn-matte:hover::before,
+.btn-matte:focus-visible::before {
+    opacity: 1;
+}
+
+.btn-matte:focus-visible {
+    outline: none;
+}
+
+.btn-matte:disabled {
+    cursor: default;
+}
+
+.btn-matte:disabled:hover,
+.btn-matte:disabled:focus-visible {
+    background-color: transparent;
+}
+
+.btn-matte:disabled:hover::before,
+.btn-matte:disabled:focus-visible::before {
+    opacity: 0;
+}
+
+.btn-matte-active {
+    background-color: color-mix(in srgb, var(--color-accent-light) 8%, transparent);
+}
+
+.btn-matte-red::before {
+    background: radial-gradient(circle, color-mix(in srgb, var(--color-danger-light) 34%, transparent) 0%, transparent 80%);
+}
+
+.btn-matte-red:hover,
+.btn-matte-red:focus-visible {
+    background-color: color-mix(in srgb, var(--color-danger) 12%, transparent);
+}
+
+.btn-matte-red.btn-matte-active {
+    background-color: color-mix(in srgb, var(--color-danger) 8%, transparent);
 }

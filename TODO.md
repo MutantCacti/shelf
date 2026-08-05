@@ -1,13 +1,13 @@
-v1.4: Accessibility redesign 
+## v1.6 Changes
 
-v1.5: Mobile redesign: bottom bar, chat-app UX, pull-to-refresh
 
----
 
-Batch uploads properly so that small files don't wait for large files
+## Next Major Versions
 
-Large file uploads could create the Item early and show a progress bar -- this change would be included in a full refactor to reimplement optimistic loading
+- 2.0 Mobile-forward and Accessibility redesign
+full refactor to reimplement optimistic loading
+Large file uploads need significant work 
+- should be far more performant
+- should create the Item early and show a progress bar
 
-Implement SSE for immediate refresh on other devices when you have shelf open on two screens at once (replaces manual reload on receiving device)
-
-Make selection persist across sessions
+- 3.0 Publishable Authentication and Security refactor

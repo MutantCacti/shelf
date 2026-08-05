@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import TransferGrid from './TransferGrid'
 import useTransferStore from '../stores/TransferStore'
 
@@ -46,6 +46,22 @@ describe('TransferGrid', () => {
         expect(screen.getByText('photo.jpg')).toBeInTheDocument()
     })
 
+    it('renders grouped items before ungrouped in reading order', () => {
+        resetStore({
+            transfers: [
+                { id: 1, type: 'text', content: 'ungrouped', created_at: '2025-03-01T00:00:00Z', size: null, group: null },
+                { id: 2, type: 'text', content: 'group two', created_at: '2025-01-01T00:00:00Z', size: null, group: 2 },
+                { id: 3, type: 'text', content: 'group one', created_at: '2025-02-01T00:00:00Z', size: null, group: 1 },
+            ],
+        })
+
+        const { container } = render(<TransferGrid onHelp={vi.fn()} onDelete={vi.fn()} />)
+        const order = [...container.querySelectorAll('[data-transfer-id]')]
+            .map(el => Number(el.getAttribute('data-transfer-id')))
+
+        expect(order).toEqual([3, 2, 1])
+    })
+
     it('renders no items when transfers is empty', () => {
         resetStore({ transfers: [] })
         render(<TransferGrid onHelp={vi.fn()} onDelete={vi.fn()} />)
@@ -74,26 +90,6 @@ describe('TransferGrid', () => {
         expect(uploadFile).toHaveBeenCalledTimes(2)
         expect(uploadFile).toHaveBeenCalledWith(file1)
         expect(uploadFile).toHaveBeenCalledWith(file2)
-    })
-
-    it('shelf:rename event triggers edit mode on the correct item', () => {
-        resetStore({
-            transfers: [
-                { id: 10, type: 'text', content: 'Editable text', created_at: '', size: null },
-                { id: 20, type: 'file', content: 'keep.txt', created_at: '', size: 100 },
-            ],
-        })
-
-        render(<TransferGrid onHelp={vi.fn()} onDelete={vi.fn()} />)
-
-        act(() => {
-            window.dispatchEvent(new CustomEvent('shelf:rename', { detail: 10 }))
-        })
-
-        // TransferBar also has a textbox, so query by tag
-        const textarea = document.querySelector('textarea')
-        expect(textarea).toBeInTheDocument()
-        expect(screen.getByText('keep.txt')).toBeInTheDocument()
     })
 
     it('calls fetch on mount', () => {

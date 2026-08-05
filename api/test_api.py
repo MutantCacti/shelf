@@ -342,6 +342,155 @@ def test_rename_transfer(auth_client):
     assert resp.json()["content"] == "renamed"
 
 
+def test_events_registry_notify_and_exclude():
+    import events
+
+    a = events.subscribe(1, "client-a")
+    b = events.subscribe(1, "client-b")
+    other = events.subscribe(2, "client-c")
+    try:
+        events.notify(1, exclude_client_id="client-a")
+        assert a[0].empty()
+        assert b[0].get_nowait() == "changed"
+        assert other[0].empty()
+
+        events.notify(1)
+        assert a[0].get_nowait() == "changed"
+        assert b[0].get_nowait() == "changed"
+    finally:
+        events.unsubscribe(1, a)
+        events.unsubscribe(1, b)
+        events.unsubscribe(2, other)
+
+    # Unsubscribed queues no longer receive pings
+    events.notify(1)
+    assert a[0].empty() and b[0].empty()
+
+
+def test_mutations_notify_other_clients(auth_client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "routes.transfers.notify",
+        lambda user_id, exclude_client_id=None: calls.append((user_id, exclude_client_id)),
+    )
+
+    headers = {"X-Shelf-Client": "tab-1"}
+    resp = auth_client.post(
+        "/transfers/", json={"type": "text", "content": "ping me"}, headers=headers
+    )
+    transfer_id = resp.json()["id"]
+    auth_client.patch(f"/transfers/{transfer_id}", json={"content": "renamed"}, headers=headers)
+    auth_client.post("/transfers/batch-group", json={"ids": [transfer_id], "group": 1}, headers=headers)
+    auth_client.post("/transfers/batch-delete", json={"ids": [transfer_id]}, headers=headers)
+
+    assert len(calls) == 4
+    assert all(c == (calls[0][0], "tab-1") for c in calls)
+
+    # Without the header the exclusion is simply absent
+    auth_client.post("/transfers/", json={"type": "text", "content": "anon tab"})
+    assert calls[-1][1] is None
+
+
+def test_upload_post_write_quota_recheck(auth_client, monkeypatch):
+    """Concurrent uploads can pass the snapshotted per-chunk check together;
+    the post-write recheck against real disk usage must catch the overshoot."""
+    import routes.transfers as rt
+
+    calls = {"n": 0}
+
+    def racing_usage(user_id):
+        # Snapshot before the write sees an empty store; by the recheck a
+        # "concurrent" upload has pushed usage over the cap.
+        calls["n"] += 1
+        return 0 if calls["n"] == 1 else rt.MAX_USER_STORAGE + 1
+
+    monkeypatch.setattr(rt, "user_storage_bytes", racing_usage)
+
+    resp = auth_client.post(
+        "/transfers/upload",
+        files={"data": ("x.bin", b"data", "application/octet-stream")},
+    )
+    assert resp.status_code == 413
+
+    # No orphan DB row or file left behind
+    assert auth_client.get("/transfers/").json() == []
+    assert auth_client.get("/transfers/usage").json()["used"] == 0
+
+
+def test_batch_group_assign_and_clear(auth_client):
+    ids = []
+    for i in range(3):
+        resp = auth_client.post("/transfers/", json={"type": "text", "content": f"item {i}"})
+        assert resp.json()["group"] is None
+        ids.append(resp.json()["id"])
+
+    resp = auth_client.post("/transfers/batch-group", json={"ids": ids[:2], "group": 3})
+    assert resp.status_code == 204
+
+    groups = {t["id"]: t["group"] for t in auth_client.get("/transfers/").json()}
+    assert groups[ids[0]] == 3
+    assert groups[ids[1]] == 3
+    assert groups[ids[2]] is None
+
+    resp = auth_client.post("/transfers/batch-group", json={"ids": ids[:1], "group": None})
+    assert resp.status_code == 204
+    groups = {t["id"]: t["group"] for t in auth_client.get("/transfers/").json()}
+    assert groups[ids[0]] is None
+    assert groups[ids[1]] == 3
+
+
+@pytest.mark.parametrize("group", [0, 10, -1])
+def test_batch_group_rejects_out_of_range(auth_client, group):
+    resp = auth_client.post("/transfers/", json={"type": "text", "content": "item"})
+    transfer_id = resp.json()["id"]
+
+    resp = auth_client.post("/transfers/batch-group", json={"ids": [transfer_id], "group": group})
+    assert resp.status_code == 400
+
+
+def test_batch_group_isolated_between_users(client):
+    _create_user(client._session_factory, TEST_PASSWORD)
+    _create_user(client._session_factory, TEST_PASSWORD_B)
+
+    client.post("/auth/login", json={"password": TEST_PASSWORD})
+    resp = client.post("/transfers/", json={"type": "text", "content": "A's item"})
+    a_id = resp.json()["id"]
+
+    client.post("/auth/logout")
+    client.post("/auth/login", json={"password": TEST_PASSWORD_B})
+
+    # User B grouping User A's transfer is a silent no-op
+    resp = client.post("/transfers/batch-group", json={"ids": [a_id], "group": 5})
+    assert resp.status_code == 204
+
+    client.post("/auth/logout")
+    client.post("/auth/login", json={"password": TEST_PASSWORD})
+    assert client.get("/transfers/").json()[0]["group"] is None
+
+
+def test_migrate_db_adds_group_column(tmp_path):
+    from sqlalchemy import create_engine as ce
+    from db import migrate_db
+
+    eng = ce(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with eng.begin() as conn:
+        conn.exec_driver_sql(
+            "CREATE TABLE transfers (id INTEGER PRIMARY KEY, user_id INTEGER, "
+            "type VARCHAR(10), content TEXT, created_at DATETIME)"
+        )
+
+    migrate_db(eng)
+    with eng.connect() as conn:
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(transfers)")}
+    assert "group" in cols
+
+    # Idempotent on a migrated database
+    migrate_db(eng)
+    with eng.connect() as conn:
+        cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(transfers)")]
+    assert cols.count("group") == 1
+
+
 def test_multi_user_isolation(client):
     """User A cannot see, download, delete, or rename User B's transfers."""
     _create_user(client._session_factory, TEST_PASSWORD)

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import TextInput from './TextInput'
 import SendButton from './SendButton'
 import PasteButton from './PasteButton'
 import UploadButton from './UploadButton'
+import GroupButton from './GroupButton'
 import DownloadButton from './DownloadButton'
 import DeleteButton from './DeleteButton'
 import LogoutButton from './LogoutButton'
@@ -17,8 +18,16 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
     const statusLabel = activity || (selected.length > 0 ? `${selected.length} selected` : statusText)
 
     const [displayText, setDisplayText] = useState(statusLabel)
+    const prevLabelRef = useRef(statusLabel)
     useEffect(() => {
         if (statusLabel === displayText) return
+        const isSelectedForm = (s: string) => /^\d+ selected$/.test(s)
+        const inPlace = isSelectedForm(statusLabel) && isSelectedForm(prevLabelRef.current)
+        prevLabelRef.current = statusLabel
+        if (inPlace) {
+            setDisplayText(statusLabel)
+            return
+        }
         setDisplayText('')
         let i = 0
         const id = setInterval(() => {
@@ -32,10 +41,12 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
     return (
         <>
             {/* Desktop */}
-            <div className="hidden sm:inline-flex items-center gap-3 select-none">
-                <LogoutButton />
-                <InfoButton onClick={onHelp} />
-                <div className="relative inline-flex items-center gap-2 px-1 py-1 rounded-full min-w-64
+            <div className="hidden sm:inline-flex items-center gap-3 select-none relative">
+                <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-3">
+                    <LogoutButton />
+                    <InfoButton onClick={onHelp} />
+                </div>
+                <div className="relative inline-flex items-center gap-1.5 px-1 py-1 rounded-full min-w-64
                                 bg-surface border border-border/30"
                      style={{ boxShadow: '0 0 20px 8px rgba(0, 0, 0, 0.2)' }}>
                     {error && (
@@ -43,14 +54,14 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
                     )}
                     <TextInput />
                     <SendButton />
-                    <UploadButton />
+                    {selected.length > 0 ? <GroupButton /> : <UploadButton />}
                     <DownloadButton />
                     <DeleteButton onDelete={onDelete} />
                 </div>
-                <div className="inline-flex items-center gap-3">
+                <div className="relative inline-flex items-center">
                     <button
                         onClick={() => fetch()}
-                        className={`cursor-pointer transition-all rounded-full hover-glow hover:-translate-y-0.5 focus-visible:-translate-y-0.5 ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
+                        className={`cursor-pointer transition-all rounded-full btn-matte p-1 hover:scale-110 focus-visible:scale-110 ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
                         title="Refresh"
                     >
                         <LogoSpinner
@@ -58,7 +69,7 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
                             spinning={loading}
                         />
                     </button>
-                    <span className={`text-xs text-accent whitespace-nowrap min-w-16 ${loading ? 'opacity-100' : 'opacity-70'}`}>
+                    <span className={`absolute left-full ml-3 top-1/2 -translate-y-1/2 text-xs text-accent whitespace-nowrap pointer-events-none ${loading ? 'opacity-100' : 'opacity-70'}`}>
                         {displayText}
                     </span>
                 </div>
@@ -69,7 +80,7 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
                 <div className="inline-flex items-center gap-1">
                     <button
                         onClick={() => fetch()}
-                        className={`cursor-pointer transition-all rounded-full hover-glow ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
+                        className={`cursor-pointer transition-all rounded-full btn-matte p-1 ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
                         title="Refresh"
                     >
                         <LogoSpinner
@@ -81,13 +92,13 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
                         {statusLabel}
                     </span>
                 </div>
-                <div className="inline-flex items-center gap-2 px-1 py-1 rounded-full
+                <div className="inline-flex items-center gap-1.5 px-1 py-1 rounded-full
                                 bg-surface border border-border/30"
                      style={{ boxShadow: '0 0 20px 8px rgba(0, 0, 0, 0.2)' }}>
                     <LogoutButton />
                     <InfoButton onClick={onHelp} />
                     <PasteButton />
-                    <UploadButton />
+                    {selected.length > 0 ? <GroupButton /> : <UploadButton />}
                     <DownloadButton />
                     <DeleteButton onDelete={onDelete} />
                 </div>

@@ -45,6 +45,11 @@ class BatchDeleteRequest(BaseModel):
     ids: list[int] = Field(..., max_length=1000)
 
 
+class BatchGroupRequest(BaseModel):
+    ids: list[int] = Field(..., max_length=1000)
+    group: Optional[int] = Field(None, ge=1, le=9)
+
+
 class TransferCreate(BaseModel):
     type: TransferType
     content: str = Field(..., min_length=1)
@@ -60,5 +65,6 @@ class TransferResponse(BaseModel):
     content: str
     created_at: datetime
     size: Optional[int] = None
+    group: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)

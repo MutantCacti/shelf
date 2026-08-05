@@ -2,9 +2,10 @@ import { useEffect, useLayoutEffect, useState, useCallback, useMemo, useRef } fr
 import useTransferStore from '../stores/TransferStore'
 import TransferItem from './TransferItem'
 import TransferBar from './TransferBar'
-const MAX_ITEM = 100
+import { byGroupThenCreated } from '../lib/groups'
+const MAX_ITEM = 140
 const GAP = 16
-const MIN_ITEM = 40
+const MIN_ITEM = 56
 const BAR_OFFSET = 48
 
 function gridBounds(positions: [number, number][]) {
@@ -48,14 +49,14 @@ function rectsIntersect(
 }
 
 export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void; onDelete: () => void }) {
-    const { transfers, fetch, uploadFile, rename, clearSelection } = useTransferStore()
+    const { transfers, fetch, uploadFile, clearSelection } = useTransferStore()
     const [dragging, setDragging] = useState(false)
-    const [editingId, setEditingId] = useState<number | null>(null)
     const [lasso, setLasso] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null)
     const lassoRef = useRef(lasso)
     lassoRef.current = lasso
     const [containerSize, setContainerSize] = useState({ w: 0, h: 0 })
     const [barHeight, setBarHeight] = useState(48)
+    const [barTransition, setBarTransition] = useState(false)
     const containerRef = useRef<HTMLDivElement>(null)
     const gridRef = useRef<HTMLDivElement>(null)
     const barRef = useRef<HTMLDivElement>(null)
@@ -64,11 +65,8 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
     useEffect(() => { fetch() }, [fetch])
 
     useEffect(() => {
-        function onRename(e: Event) {
-            setEditingId((e as CustomEvent).detail)
-        }
-        window.addEventListener('shelf:rename', onRename)
-        return () => window.removeEventListener('shelf:rename', onRename)
+        const id = requestAnimationFrame(() => requestAnimationFrame(() => setBarTransition(true)))
+        return () => cancelAnimationFrame(id)
     }, [])
 
     useEffect(() => {
@@ -97,6 +95,9 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
     }, [])
 
     const aspect = containerSize.w && containerSize.h ? containerSize.w / containerSize.h : 1
+
+    // Reading order (left to right, top to bottom): grouped clusters first, then ungrouped.
+    const sorted = useMemo(() => [...transfers].sort(byGroupThenCreated), [transfers])
 
     const positions = useMemo(
         () => gridFill(transfers.length, aspect),
@@ -130,17 +131,17 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
         const lh = Math.abs(l.currentY - l.startY)
 
         const hit: number[] = []
-        for (let i = 0; i < transfers.length; i++) {
+        for (let i = 0; i < sorted.length; i++) {
             const [gx, gy] = positions[i]
             const ix = cx + gx * cell - cell / 2
             const iy = cy + gy * cell - cell / 2 + BAR_OFFSET
             if (rectsIntersect(lx, ly, lw, lh, ix, iy, itemSize, itemSize)) {
-                hit.push(transfers[i].id)
+                hit.push(sorted[i].id)
             }
         }
         const merged = [...new Set([...preLassoSelection.current, ...hit])]
         useTransferStore.setState({ selected: merged })
-    }, [transfers, positions, cell, itemSize])
+    }, [sorted, positions, cell, itemSize])
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if ((e.target as HTMLElement).closest('button, input')) return
@@ -241,7 +242,7 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
                         top: transfers.length > 0
                             ? `calc(50vh + ${bounds.minY * cell - cell / 2 - GAP - barHeight + BAR_OFFSET}px)`
                             : `calc(50vh - ${barHeight / 2}px)`,
-                        transition: 'top 0.3s ease-out',
+                        transition: barTransition ? 'top 0.3s ease-out' : 'none',
                     }}
                 >
                     <div
@@ -256,7 +257,7 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
                     />
                     <TransferBar onHelp={onHelp} onDelete={onDelete} />
                 </div>
-                {transfers.map((t, i) => {
+                {sorted.map((t, i) => {
                     const [gx, gy] = positions[i]
                     return (
                         <div
@@ -271,10 +272,6 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
                             <TransferItem
                                 transfer={t}
                                 size={itemSize}
-                                editing={editingId === t.id}
-                                onStartEdit={() => setEditingId(t.id)}
-                                onCommitEdit={(newContent) => { rename(t.id, newContent); setEditingId(null) }}
-                                onCancelEdit={() => setEditingId(null)}
                             />
                         </div>
                     )
@@ -282,7 +279,7 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
                 {lassoStyle && (
                     <div
                         className="absolute pointer-events-none border border-accent/50 z-30"
-                        style={{ ...lassoStyle, backgroundColor: 'rgba(35, 166, 122, 0.08)' }}
+                        style={{ ...lassoStyle, backgroundColor: 'color-mix(in srgb, var(--color-accent) 8%, transparent)' }}
                     />
                 )}
             </div>

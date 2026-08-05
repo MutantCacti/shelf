@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { Transfer } from '../types/types'
+import { CLIENT_ID } from '../lib/sse'
+import { byGroupThenCreated } from '../lib/groups'
 
 const API = '/api/transfers'
 
@@ -10,6 +12,8 @@ interface TransferStore {
     ready: boolean
     error: string | null
     selected: number[]
+    // Last item picked by a plain or ctrl click; shift-click ranges from here
+    selectionAnchor: number | null
     statusText: string
     usage: { used: number; limit: number } | null
 
@@ -21,7 +25,10 @@ interface TransferStore {
     download: (id: number) => void
     batchDownload: (ids: number[]) => void
     rename: (id: number, newContent: string) => Promise<void>
+    applyGroup: (ids: number[], group: number | null) => Promise<void>
+    selectOnly: (id: number) => void
     toggleSelect: (id: number) => void
+    selectRange: (id: number) => void
     clearSelection: () => void
 }
 
@@ -29,6 +36,8 @@ async function api(path: string, init?: RequestInit) {
     const res = await fetch(`${API}${path}`, {
         credentials: 'include',
         ...init,
+        // Identify this tab so SSE pings for its own mutations are skipped
+        headers: { 'X-Shelf-Client': CLIENT_ID, ...init?.headers },
     })
     if (!res.ok) {
         const body = await res.text()
@@ -68,18 +77,26 @@ function inflightDown(set: any, get: any) {
     })
 }
 
-// Sequential upload queue to avoid overwhelming browser connection limits
-const uploadQueue: (() => Promise<void>)[] = []
-let uploading = false
+// Bounded upload pool: a few parallel lanes so the browser connection limit
+// is respected, picking the smallest pending file first so small files never
+// wait behind large ones.
+const MAX_CONCURRENT_UPLOADS = 3
+const uploadQueue: { size: number; task: () => Promise<void> }[] = []
+let activeUploads = 0
 
-async function drainQueue() {
-    if (uploading) return
-    uploading = true
-    while (uploadQueue.length > 0) {
-        const task = uploadQueue.shift()!
-        await task()
+function pumpUploads() {
+    while (activeUploads < MAX_CONCURRENT_UPLOADS && uploadQueue.length > 0) {
+        let next = 0
+        for (let i = 1; i < uploadQueue.length; i++) {
+            if (uploadQueue[i].size < uploadQueue[next].size) next = i
+        }
+        const { task } = uploadQueue.splice(next, 1)[0]
+        activeUploads++
+        task().finally(() => {
+            activeUploads--
+            pumpUploads()
+        })
     }
-    uploading = false
 }
 
 const useTransferStore = create<TransferStore>((set, get) => ({
@@ -91,14 +108,21 @@ const useTransferStore = create<TransferStore>((set, get) => ({
     statusText: 'try ?',
     usage: null,
     selected: [],
+    selectionAnchor: null,
 
     async fetch() {
         inflightUp(set, 'Loading')
-        set({ selected: [] })
         try {
             const res = await api('/')
             const transfers: Transfer[] = await res.json()
-            set({ transfers })
+            // Prune rather than clear the selection: background refetches
+            // (SSE pings, error recovery) must not wipe an in-progress selection.
+            const anchor = get().selectionAnchor
+            set({
+                transfers,
+                selected: get().selected.filter(id => transfers.some(t => t.id === id)),
+                selectionAnchor: transfers.some(t => t.id === anchor) ? anchor : null,
+            })
         } catch (e: any) {
             set({ error: e.message })
         } finally {
@@ -137,23 +161,26 @@ const useTransferStore = create<TransferStore>((set, get) => ({
 
         inflightUp(set, 'Uploading')
 
-        uploadQueue.push(async () => {
-            try {
-                const form = new FormData()
-                form.append('data', file)
-                const res = await api('/upload', {
-                    method: 'POST',
-                    body: form,
-                })
-                const transfer: Transfer = await res.json()
-                set({ transfers: [transfer, ...get().transfers] })
-            } catch (e: any) {
-                set({ error: e.message })
-            } finally {
-                inflightDown(set, get)
-            }
+        uploadQueue.push({
+            size: file.size,
+            task: async () => {
+                try {
+                    const form = new FormData()
+                    form.append('data', file)
+                    const res = await api('/upload', {
+                        method: 'POST',
+                        body: form,
+                    })
+                    const transfer: Transfer = await res.json()
+                    set({ transfers: [transfer, ...get().transfers] })
+                } catch (e: any) {
+                    set({ error: e.message })
+                } finally {
+                    inflightDown(set, get)
+                }
+            },
         })
-        drainQueue()
+        pumpUploads()
     },
 
     async remove(id: number) {
@@ -241,6 +268,10 @@ const useTransferStore = create<TransferStore>((set, get) => ({
 
     async rename(id: number, newContent: string) {
         inflightUp(set, 'Renaming')
+        const prev = get().transfers.find(t => t.id === id)
+        // Optimistic: surface the new content immediately so the modal/grid don't
+        // flash the old value during the PATCH round-trip.
+        set({ transfers: get().transfers.map(t => t.id === id ? { ...t, content: newContent } : t) })
         try {
             const res = await api(`/${id}`, {
                 method: 'PATCH',
@@ -251,14 +282,65 @@ const useTransferStore = create<TransferStore>((set, get) => ({
             set({ transfers: get().transfers.map(t => t.id === id ? updated : t) })
         } catch (e: any) {
             set({ error: e.message })
+            if (prev) set({ transfers: get().transfers.map(t => t.id === id ? prev : t) })
         } finally {
             inflightDown(set, get)
         }
     },
 
+    async applyGroup(ids: number[], group: number | null) {
+        // Toggle: assigning a group every target already has clears it instead.
+        if (group !== null) {
+            const targets = get().transfers.filter(t => ids.includes(t.id))
+            if (targets.length > 0 && targets.every(t => t.group === group)) group = null
+        }
+
+        inflightUp(set, 'Grouping')
+        const idSet = new Set(ids)
+        set({ transfers: get().transfers.map(t => idSet.has(t.id) ? { ...t, group } : t) })
+
+        try {
+            await api('/batch-group', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids, group }),
+            })
+        } catch (e: any) {
+            // Re-fetch from server instead of restoring stale snapshot
+            set({ error: e.message })
+            try {
+                const res = await api('/')
+                set({ transfers: await res.json() })
+            } catch { /* fetch error already surfaced */ }
+        } finally {
+            inflightDown(set, get)
+        }
+    },
+
+    selectOnly(id: number) {
+        set({ selected: [id], selectionAnchor: id })
+    },
+
     toggleSelect(id: number) {
         const s = get().selected
-        set({ selected: s.includes(id) ? s.filter(x => x !== id) : [...s, id] })
+        set({
+            selected: s.includes(id) ? s.filter(x => x !== id) : [...s, id],
+            selectionAnchor: id,
+        })
+    },
+
+    // Select the run between the anchor and id in visual grid order
+    // (grouped clusters first, newest first — the order TransferGrid renders).
+    selectRange(id: number) {
+        const sorted = [...get().transfers].sort(byGroupThenCreated)
+        const ai = sorted.findIndex(t => t.id === get().selectionAnchor)
+        const bi = sorted.findIndex(t => t.id === id)
+        if (ai === -1 || bi === -1) {
+            get().selectOnly(id)
+            return
+        }
+        const [lo, hi] = ai <= bi ? [ai, bi] : [bi, ai]
+        set({ selected: sorted.slice(lo, hi + 1).map(t => t.id) })
     },
 
     clearSelection() {

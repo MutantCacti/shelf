@@ -47,6 +47,36 @@ describe('TransferBar', () => {
         expect(screen.getAllByTitle('Refresh')).toHaveLength(2)
     })
 
+    it('swaps Upload for the group palette button when items are selected', async () => {
+        resetStore({ selected: [1] })
+        render(<TransferBar onHelp={vi.fn()} onDelete={vi.fn()} />)
+
+        expect(screen.queryByTitle('Upload files')).not.toBeInTheDocument()
+        expect(screen.getAllByTitle('Group colours')).toHaveLength(2)
+    })
+
+    it('palette swatch applies the group to the selection', async () => {
+        const applyGroup = vi.fn()
+        resetStore({ selected: [1, 2], applyGroup })
+        render(<TransferBar onHelp={vi.fn()} onDelete={vi.fn()} />)
+
+        await userEvent.click(screen.getAllByTitle('Group colours')[0])
+        await userEvent.click(screen.getAllByLabelText('Group 3')[0])
+
+        expect(applyGroup).toHaveBeenCalledWith([1, 2], 3)
+    })
+
+    it('palette "No colour" clears the group', async () => {
+        const applyGroup = vi.fn()
+        resetStore({ selected: [1], applyGroup })
+        render(<TransferBar onHelp={vi.fn()} onDelete={vi.fn()} />)
+
+        await userEvent.click(screen.getAllByTitle('Group colours')[0])
+        await userEvent.click(screen.getAllByLabelText('No colour')[0])
+
+        expect(applyGroup).toHaveBeenCalledWith([1], null)
+    })
+
     it('Download button disabled when selected is empty', () => {
         resetStore({ selected: [] })
         render(<TransferBar onHelp={vi.fn()} onDelete={vi.fn()} />)

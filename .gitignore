@@ -6,6 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+test-results/
 
 node_modules
 dist
@@ -29,7 +30,7 @@ dist-ssr
 __pycache__/
 *.pyc
 *.egg-info/
-api/.venv/
+.venv/
 api/data/
 
 # HTTPS dev certs

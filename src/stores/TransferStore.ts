@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { Transfer } from '../types/types'
 import { CLIENT_ID } from '../lib/sse'
+import { byGroupThenCreated } from '../lib/groups'
 
 const API = '/api/transfers'
 
@@ -11,6 +12,8 @@ interface TransferStore {
     ready: boolean
     error: string | null
     selected: number[]
+    // Last item picked by a plain or ctrl click; shift-click ranges from here
+    selectionAnchor: number | null
     statusText: string
     usage: { used: number; limit: number } | null
 
@@ -23,7 +26,9 @@ interface TransferStore {
     batchDownload: (ids: number[]) => void
     rename: (id: number, newContent: string) => Promise<void>
     applyGroup: (ids: number[], group: number | null) => Promise<void>
+    selectOnly: (id: number) => void
     toggleSelect: (id: number) => void
+    selectRange: (id: number) => void
     clearSelection: () => void
 }
 
@@ -103,6 +108,7 @@ const useTransferStore = create<TransferStore>((set, get) => ({
     statusText: 'try ?',
     usage: null,
     selected: [],
+    selectionAnchor: null,
 
     async fetch() {
         inflightUp(set, 'Loading')
@@ -111,9 +117,11 @@ const useTransferStore = create<TransferStore>((set, get) => ({
             const transfers: Transfer[] = await res.json()
             // Prune rather than clear the selection: background refetches
             // (SSE pings, error recovery) must not wipe an in-progress selection.
+            const anchor = get().selectionAnchor
             set({
                 transfers,
                 selected: get().selected.filter(id => transfers.some(t => t.id === id)),
+                selectionAnchor: transfers.some(t => t.id === anchor) ? anchor : null,
             })
         } catch (e: any) {
             set({ error: e.message })
@@ -309,9 +317,30 @@ const useTransferStore = create<TransferStore>((set, get) => ({
         }
     },
 
+    selectOnly(id: number) {
+        set({ selected: [id], selectionAnchor: id })
+    },
+
     toggleSelect(id: number) {
         const s = get().selected
-        set({ selected: s.includes(id) ? s.filter(x => x !== id) : [...s, id] })
+        set({
+            selected: s.includes(id) ? s.filter(x => x !== id) : [...s, id],
+            selectionAnchor: id,
+        })
+    },
+
+    // Select the run between the anchor and id in visual grid order
+    // (grouped clusters first, newest first — the order TransferGrid renders).
+    selectRange(id: number) {
+        const sorted = [...get().transfers].sort(byGroupThenCreated)
+        const ai = sorted.findIndex(t => t.id === get().selectionAnchor)
+        const bi = sorted.findIndex(t => t.id === id)
+        if (ai === -1 || bi === -1) {
+            get().selectOnly(id)
+            return
+        }
+        const [lo, hi] = ai <= bi ? [ai, bi] : [bi, ai]
+        set({ selected: sorted.slice(lo, hi + 1).map(t => t.id) })
     },
 
     clearSelection() {

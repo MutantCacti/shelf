@@ -87,7 +87,7 @@ function getLabel(t: Transfer) {
 
 function ImageItem({ transfer, dim, onClick, onDoubleClick }: {
     transfer: Transfer, dim: string,
-    onClick: () => void, onDoubleClick: () => void,
+    onClick: (e: React.MouseEvent) => void, onDoubleClick: () => void,
 }) {
     return (
         <button
@@ -116,7 +116,7 @@ function ImageItem({ transfer, dim, onClick, onDoubleClick }: {
 
 function TextItem({ transfer, dim, iconSize, copied, onClick, onDoubleClick }: {
     transfer: Transfer, dim: string, iconSize: number, copied: boolean,
-    onClick: () => void, onDoubleClick: () => void,
+    onClick: (e: React.MouseEvent) => void, onDoubleClick: () => void,
 }) {
     return (
         <button
@@ -144,7 +144,7 @@ function TextItem({ transfer, dim, iconSize, copied, onClick, onDoubleClick }: {
 
 function FileItem({ transfer, dim, iconSize, onClick, onDoubleClick }: {
     transfer: Transfer, dim: string, iconSize: number,
-    onClick: () => void, onDoubleClick: () => void,
+    onClick: (e: React.MouseEvent) => void, onDoubleClick: () => void,
 }) {
     const Icon = getIcon(transfer)
     return (
@@ -172,7 +172,7 @@ interface TransferItemProps {
 }
 
 export default function TransferItem({ transfer, size = 100 }: TransferItemProps) {
-    const { selected, toggleSelect, download } = useTransferStore()
+    const { selected, selectOnly, toggleSelect, selectRange, download } = useTransferStore()
     const [copied, setCopied] = useState(false)
     const isSelected = selected.includes(transfer.id)
     const iconSize = Math.round(size * 0.4)
@@ -193,8 +193,15 @@ export default function TransferItem({ transfer, size = 100 }: TransferItemProps
         return () => window.removeEventListener('shelf:copy', onCopy)
     }, [transfer.id])
 
-    function handleClick() {
-        toggleSelect(transfer.id)
+    function handleClick(e: React.MouseEvent) {
+        // Touch keeps additive taps: there are no modifier keys to multi-select with
+        if (window.matchMedia?.('(hover: none)').matches) {
+            toggleSelect(transfer.id)
+            return
+        }
+        if (e.shiftKey) selectRange(transfer.id)
+        else if (e.ctrlKey || e.metaKey) toggleSelect(transfer.id)
+        else selectOnly(transfer.id)
     }
 
     function handleDoubleClick() {

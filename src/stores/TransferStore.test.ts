@@ -41,6 +41,7 @@ function resetStore() {
         statusText: 'try help',
         usage: null,
         selected: [],
+        selectionAnchor: null,
     })
 }
 
@@ -418,6 +419,59 @@ describe('TransferStore', () => {
             useTransferStore.setState({ selected: [1, 2, 3] })
             useTransferStore.getState().clearSelection()
             expect(useTransferStore.getState().selected).toEqual([])
+        })
+
+        it('selectOnly replaces the selection and moves the anchor', () => {
+            useTransferStore.setState({ selected: [1, 2], selectionAnchor: 1 })
+            useTransferStore.getState().selectOnly(3)
+            const s = useTransferStore.getState()
+            expect(s.selected).toEqual([3])
+            expect(s.selectionAnchor).toBe(3)
+        })
+
+        it('toggleSelect moves the anchor to the toggled item', () => {
+            useTransferStore.getState().toggleSelect(2)
+            expect(useTransferStore.getState().selectionAnchor).toBe(2)
+        })
+
+        it('selectRange selects the run between anchor and target in grid order', () => {
+            // Grid order: grouped first (group asc), then ungrouped newest first
+            useTransferStore.setState({
+                transfers: [
+                    transfer({ id: 1, group: 2 }),
+                    transfer({ id: 2, group: null, created_at: '2025-03-01T00:00:00Z' }),
+                    transfer({ id: 3, group: null, created_at: '2025-02-01T00:00:00Z' }),
+                    transfer({ id: 4, group: null, created_at: '2025-01-01T00:00:00Z' }),
+                ],
+                selectionAnchor: 2,
+            })
+            // Order is [1(grouped), 2, 3, 4]; range 2 -> 4 crosses the bucket
+            useTransferStore.getState().selectRange(4)
+            expect(useTransferStore.getState().selected).toEqual([2, 3, 4])
+        })
+
+        it('selectRange with no valid anchor falls back to selectOnly', () => {
+            useTransferStore.setState({
+                transfers: [transfer({ id: 1 }), transfer({ id: 2, created_at: '2025-02-01T00:00:00Z' })],
+                selectionAnchor: null,
+            })
+            useTransferStore.getState().selectRange(2)
+            const s = useTransferStore.getState()
+            expect(s.selected).toEqual([2])
+            expect(s.selectionAnchor).toBe(2)
+        })
+
+        it('fetch clears a stale selection anchor', async () => {
+            vi.stubGlobal('fetch', mockFetch({
+                '/usage': { ok: true, body: usage },
+                '/api/transfers': { ok: true, body: [transfer({ id: 2 })] },
+            }))
+            useTransferStore.setState({ selected: [2], selectionAnchor: 9 })
+
+            await useTransferStore.getState().fetch()
+
+            expect(useTransferStore.getState().selectionAnchor).toBeNull()
+            vi.unstubAllGlobals()
         })
     })
 

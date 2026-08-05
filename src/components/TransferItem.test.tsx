@@ -121,14 +121,14 @@ describe('TransferItem', () => {
         window.removeEventListener('shelf:preview', onPreview)
     })
 
-    it('double-click leaves an unselected item unselected', async () => {
+    it('double-click leaves the item selected (plain click selects, never toggles off)', async () => {
         useTransferStore.setState({ transfers: [fileTransfer], selected: [] })
 
         const { container } = render(<TransferItem transfer={fileTransfer} />)
         const btn = container.querySelector('button')!
         await userEvent.dblClick(btn)
 
-        expect(useTransferStore.getState().selected).not.toContain(fileTransfer.id)
+        expect(useTransferStore.getState().selected).toEqual([fileTransfer.id])
     })
 
     it('double-click leaves an already-selected item selected', async () => {
@@ -142,13 +142,55 @@ describe('TransferItem', () => {
     })
 
 
-    it('click toggles selection', () => {
+    it('plain click replaces the selection with the clicked item', () => {
+        useTransferStore.setState({ transfers: [textTransfer, fileTransfer], selected: [fileTransfer.id] })
         const { container } = render(<TransferItem transfer={textTransfer} />)
         const btn = container.querySelector('button')!
 
         fireEvent.click(btn)
 
-        expect(useTransferStore.getState().selected).toContain(textTransfer.id)
+        expect(useTransferStore.getState().selected).toEqual([textTransfer.id])
+    })
+
+    it('ctrl+click toggles the item in and out of the selection', () => {
+        useTransferStore.setState({ transfers: [textTransfer, fileTransfer], selected: [fileTransfer.id] })
+        const { container } = render(<TransferItem transfer={textTransfer} />)
+        const btn = container.querySelector('button')!
+
+        fireEvent.click(btn, { ctrlKey: true })
+        expect(useTransferStore.getState().selected).toEqual([fileTransfer.id, textTransfer.id])
+
+        fireEvent.click(btn, { ctrlKey: true })
+        expect(useTransferStore.getState().selected).toEqual([fileTransfer.id])
+    })
+
+    it('shift+click selects the range from the anchor in grid order', () => {
+        const t = (id: number) => ({
+            ...textTransfer, id, content: `item ${id}`,
+            created_at: `2025-01-0${id}T00:00:00Z`, group: null,
+        })
+        // Grid order (newest first): 3, 2, 1
+        useTransferStore.setState({ transfers: [t(1), t(2), t(3)], selected: [3], selectionAnchor: 3 })
+        const { container } = render(<TransferItem transfer={t(1)} />)
+        const btn = container.querySelector('button')!
+
+        fireEvent.click(btn, { shiftKey: true })
+
+        expect([...useTransferStore.getState().selected].sort()).toEqual([1, 2, 3])
+    })
+
+    it('tap keeps additive toggle behaviour on touch devices', () => {
+        const matchMedia = vi.fn().mockReturnValue({ matches: true })
+        vi.stubGlobal('matchMedia', matchMedia)
+        useTransferStore.setState({ transfers: [textTransfer, fileTransfer], selected: [fileTransfer.id] })
+        const { container } = render(<TransferItem transfer={textTransfer} />)
+        const btn = container.querySelector('button')!
+
+        fireEvent.click(btn)
+        expect(useTransferStore.getState().selected).toEqual([fileTransfer.id, textTransfer.id])
+        expect(matchMedia).toHaveBeenCalledWith('(hover: none)')
+
+        vi.unstubAllGlobals()
     })
 
 

@@ -11,4 +11,21 @@ test.describe("text transfer happy path", () => {
         const item = page.locator("[data-transfer-id]").first()
         await expect(item).toContainText("Hello world!")
     })
+
+    test("urls render as links and a leading TODO is highlighted", async ({ page }) => {
+        await page.getByPlaceholder("Send text").fill("TODO read https://example.com today")
+        await page.getByPlaceholder("Send text").press("Enter")
+
+        const item = page.locator("[data-transfer-id]").first()
+        const link = item.getByRole("link")
+        await expect(link).toHaveAttribute("href", "https://example.com")
+        await expect(link).toHaveAttribute("target", "_blank")
+        await expect(item.getByText("TODO", { exact: true })).toBeVisible()
+
+        // Clicking the link must not toggle card selection
+        const popup = page.waitForEvent("popup")
+        await link.click()
+        await (await popup).close()
+        await expect(page.getByTitle("Group colours")).toHaveCount(0)
+    })
 })

@@ -6,6 +6,7 @@ import useTransferStore from '../stores/TransferStore'
 import useAuthStore from '../stores/AuthStore'
 import { keyToGroup } from '../lib/groups'
 import { connectEvents } from '../lib/sse'
+import { copyRichText, htmlToStructuredText } from '../lib/clipboard'
 import ToastContainer from '../components/Toast'
 
 type Anchor = { x: number, y: number }
@@ -66,7 +67,9 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
                 if (dup) { nudgeDuplicate(dup.id) } else { uploadFile(f) }
             })
         } else {
-            const text = e.clipboardData?.getData('text/plain')
+            const html = e.clipboardData?.getData('text/html')
+            const structured = html ? htmlToStructuredText(html) : ''
+            const text = structured || e.clipboardData?.getData('text/plain')
             if (!text) return
             createText(text).then(dupId => { if (dupId) nudgeDuplicate(dupId) })
         }
@@ -110,7 +113,7 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
                 const t = transfers.find(t => t.id === selected[0])
                 if (t && t.type === 'text') {
                     e.preventDefault()
-                    navigator.clipboard.writeText(t.content)
+                    copyRichText(t.content)
                     window.dispatchEvent(new CustomEvent('shelf:copy', { detail: t.id }))
                 }
             }

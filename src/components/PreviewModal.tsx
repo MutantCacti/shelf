@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { LuDownload, LuX, LuFile, LuClipboard, LuCheck, LuPencil } from 'react-icons/lu'
 import { Transfer } from '../types/types'
 import useTransferStore from '../stores/TransferStore'
+import { RichText } from '../lib/richtext'
+import { copyRichText } from '../lib/clipboard'
 
 const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico', 'bmp', 'tiff'])
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'mov', 'm4v', 'mkv', 'avi'])
@@ -160,7 +162,7 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
     const rename = useTransferStore(s => s.rename)
 
     function copyTextContent() {
-        navigator.clipboard.writeText(transfer.content)
+        copyRichText(transfer.content)
         setCopied(true)
         setTimeout(() => setCopied(false), 1200)
     }
@@ -330,7 +332,7 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
     } else if (transfer.type === 'text') {
         body = (
             <div className="text-sm text-text whitespace-pre-wrap wrap-break-word border border-transparent rounded">
-                {transfer.content}
+                <RichText content={transfer.content} />
             </div>
         )
     } else if (IMAGE_EXTS.has(ext)) {

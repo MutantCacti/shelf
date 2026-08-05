@@ -156,6 +156,17 @@ describe('PreviewModal', () => {
         expect(modal).toHaveTextContent('second line')
     })
 
+    it('linkifies urls and highlights TODO in the text preview', () => {
+        const todoTransfer: Transfer = {
+            ...textTransfer,
+            content: 'TODO read https://example.com today',
+        }
+        render(<PreviewModal transfer={todoTransfer} onClose={vi.fn()} />)
+
+        expect(screen.getByRole('link')).toHaveAttribute('href', 'https://example.com')
+        expect(screen.getByText('TODO').className).toContain('text-secondary')
+    })
+
     it('shows Copy (not Download) button for text-type transfers', () => {
         render(<PreviewModal transfer={textTransfer} onClose={vi.fn()} />)
         expect(screen.getByLabelText('Copy')).toBeInTheDocument()

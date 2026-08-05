@@ -7,6 +7,8 @@ import {
 import { Transfer } from '../types/types'
 import useTransferStore from '../stores/TransferStore'
 import { groupColor } from '../lib/groups'
+import { RichText } from '../lib/richtext'
+import { copyRichText } from '../lib/clipboard'
 
 const RADIUS = '8px'
 
@@ -133,7 +135,7 @@ function TextItem({ transfer, dim, iconSize, copied, onClick, onDoubleClick }: {
                     className="text-xs text-text text-left w-full h-full p-3 overflow-hidden wrap-break-word leading-relaxed"
                     style={{ maskImage: 'linear-gradient(to bottom, black calc(80% - 1.5rem), transparent 100%)' }}
                 >
-                    {transfer.content}
+                    <RichText content={transfer.content} />
                 </span>
             )}
         </button>
@@ -178,7 +180,7 @@ export default function TransferItem({ transfer, size = 100 }: TransferItemProps
     const dim = `${size}px`
 
     function copyText() {
-        navigator.clipboard.writeText(transfer.content)
+        copyRichText(transfer.content)
         setCopied(true)
         setTimeout(() => setCopied(false), 1200)
     }

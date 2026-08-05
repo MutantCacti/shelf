@@ -159,6 +159,27 @@ describe('TransferItem', () => {
         expect(wrapper.classList.contains('active')).toBe(false)
     })
 
+    it('renders urls in text items as clickable links', () => {
+        const withUrl: Transfer = { ...textTransfer, content: 'see https://example.com now' }
+        render(<TransferItem transfer={withUrl} />)
+        const link = screen.getByRole('link')
+        expect(link).toHaveAttribute('href', 'https://example.com')
+        expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    })
+
+    it('clicking a link on the card does not toggle selection', () => {
+        const withUrl: Transfer = { ...textTransfer, content: 'https://example.com' }
+        render(<TransferItem transfer={withUrl} />)
+        fireEvent.click(screen.getByRole('link'))
+        expect(useTransferStore.getState().selected).toEqual([])
+    })
+
+    it('highlights a leading TODO on the card', () => {
+        const todo: Transfer = { ...textTransfer, content: 'TODO water plants' }
+        render(<TransferItem transfer={todo} />)
+        expect(screen.getByText('TODO').className).toContain('text-secondary')
+    })
+
     it('shows group tint with the group colour variable when grouped', () => {
         const grouped: Transfer = { ...textTransfer, group: 4 }
         const { container } = render(<TransferItem transfer={grouped} />)

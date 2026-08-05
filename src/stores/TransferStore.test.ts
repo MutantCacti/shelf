@@ -155,6 +155,56 @@ describe('TransferStore', () => {
             expect(useTransferStore.getState().transfers[0]).toEqual(newT)
         })
 
+        it('runs at most 3 uploads in parallel, starting the smallest pending file first', async () => {
+            const started: string[] = []
+            const resolvers: Record<string, () => void> = {}
+            globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+                if (url.includes('/usage')) {
+                    return { ok: true, status: 200, statusText: 'OK', json: async () => usage, text: async () => '' } as any
+                }
+                const name = ((init!.body as FormData).get('data') as File).name
+                started.push(name)
+                return new Promise(resolve => {
+                    resolvers[name] = () => resolve({
+                        ok: true, status: 200, statusText: 'OK',
+                        json: async () => transfer({ id: started.length, type: 'file', content: name, size: 1 }),
+                        text: async () => '',
+                    })
+                })
+            }) as any
+
+            const mk = (name: string, size: number) => {
+                const f = new File(['x'], name)
+                Object.defineProperty(f, 'size', { value: size })
+                return f
+            }
+
+            const s = useTransferStore.getState()
+            s.uploadFile(mk('big.iso', 1000))
+            s.uploadFile(mk('a.txt', 10))
+            s.uploadFile(mk('b.txt', 20))
+            s.uploadFile(mk('d.txt', 40))
+            s.uploadFile(mk('c.txt', 30))
+
+            // First three occupy the lanes in arrival order; the rest wait
+            expect(started).toEqual(['big.iso', 'a.txt', 'b.txt'])
+
+            // Freeing a lane starts the smallest pending file, not the next queued
+            resolvers['a.txt']()
+            await vi.waitFor(() => expect(started).toHaveLength(4))
+            expect(started[3]).toBe('c.txt')
+
+            resolvers['big.iso']()
+            await vi.waitFor(() => expect(started).toHaveLength(5))
+            expect(started[4]).toBe('d.txt')
+
+            resolvers['b.txt']()
+            resolvers['c.txt']()
+            resolvers['d.txt']()
+            await vi.waitFor(() => expect(useTransferStore.getState().inflight).toBe(0))
+            expect(useTransferStore.getState().transfers).toHaveLength(5)
+        })
+
         it('rejects files > 1GB client-side', async () => {
             globalThis.fetch = vi.fn()
 

@@ -145,6 +145,12 @@ async def create_file_transfer(
                     if current_usage + written > MAX_USER_STORAGE:
                         raise ClientException("Storage limit reached (1GB)", status_code=413)
                     f.write(chunk)
+            # current_usage was snapshotted before the write, so concurrent
+            # uploads can each pass the per-chunk check yet overshoot the cap
+            # together. Recheck real usage now that this file is fully on disk;
+            # bounds the overshoot without any locking.
+            if user_storage_bytes(user_id) > MAX_USER_STORAGE:
+                raise ClientException("Storage limit reached (1GB)", status_code=413)
         except ClientException:
             try:
                 os.remove(file_path)

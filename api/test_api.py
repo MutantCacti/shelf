@@ -342,6 +342,32 @@ def test_rename_transfer(auth_client):
     assert resp.json()["content"] == "renamed"
 
 
+def test_upload_post_write_quota_recheck(auth_client, monkeypatch):
+    """Concurrent uploads can pass the snapshotted per-chunk check together;
+    the post-write recheck against real disk usage must catch the overshoot."""
+    import routes.transfers as rt
+
+    calls = {"n": 0}
+
+    def racing_usage(user_id):
+        # Snapshot before the write sees an empty store; by the recheck a
+        # "concurrent" upload has pushed usage over the cap.
+        calls["n"] += 1
+        return 0 if calls["n"] == 1 else rt.MAX_USER_STORAGE + 1
+
+    monkeypatch.setattr(rt, "user_storage_bytes", racing_usage)
+
+    resp = auth_client.post(
+        "/transfers/upload",
+        files={"data": ("x.bin", b"data", "application/octet-stream")},
+    )
+    assert resp.status_code == 413
+
+    # No orphan DB row or file left behind
+    assert auth_client.get("/transfers/").json() == []
+    assert auth_client.get("/transfers/usage").json()["used"] == 0
+
+
 def test_batch_group_assign_and_clear(auth_client):
     ids = []
     for i in range(3):

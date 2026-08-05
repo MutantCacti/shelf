@@ -69,18 +69,26 @@ function inflightDown(set: any, get: any) {
     })
 }
 
-// Sequential upload queue to avoid overwhelming browser connection limits
-const uploadQueue: (() => Promise<void>)[] = []
-let uploading = false
+// Bounded upload pool: a few parallel lanes so the browser connection limit
+// is respected, picking the smallest pending file first so small files never
+// wait behind large ones.
+const MAX_CONCURRENT_UPLOADS = 3
+const uploadQueue: { size: number; task: () => Promise<void> }[] = []
+let activeUploads = 0
 
-async function drainQueue() {
-    if (uploading) return
-    uploading = true
-    while (uploadQueue.length > 0) {
-        const task = uploadQueue.shift()!
-        await task()
+function pumpUploads() {
+    while (activeUploads < MAX_CONCURRENT_UPLOADS && uploadQueue.length > 0) {
+        let next = 0
+        for (let i = 1; i < uploadQueue.length; i++) {
+            if (uploadQueue[i].size < uploadQueue[next].size) next = i
+        }
+        const { task } = uploadQueue.splice(next, 1)[0]
+        activeUploads++
+        task().finally(() => {
+            activeUploads--
+            pumpUploads()
+        })
     }
-    uploading = false
 }
 
 const useTransferStore = create<TransferStore>((set, get) => ({
@@ -142,23 +150,26 @@ const useTransferStore = create<TransferStore>((set, get) => ({
 
         inflightUp(set, 'Uploading')
 
-        uploadQueue.push(async () => {
-            try {
-                const form = new FormData()
-                form.append('data', file)
-                const res = await api('/upload', {
-                    method: 'POST',
-                    body: form,
-                })
-                const transfer: Transfer = await res.json()
-                set({ transfers: [transfer, ...get().transfers] })
-            } catch (e: any) {
-                set({ error: e.message })
-            } finally {
-                inflightDown(set, get)
-            }
+        uploadQueue.push({
+            size: file.size,
+            task: async () => {
+                try {
+                    const form = new FormData()
+                    form.append('data', file)
+                    const res = await api('/upload', {
+                        method: 'POST',
+                        body: form,
+                    })
+                    const transfer: Transfer = await res.json()
+                    set({ transfers: [transfer, ...get().transfers] })
+                } catch (e: any) {
+                    set({ error: e.message })
+                } finally {
+                    inflightDown(set, get)
+                }
+            },
         })
-        drainQueue()
+        pumpUploads()
     },
 
     async remove(id: number) {

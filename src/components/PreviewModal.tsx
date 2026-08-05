@@ -462,7 +462,7 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
                                 onClick={commitEdit}
                                 aria-label="Save"
                                 title="Save"
-                                className="cursor-pointer transition-all rounded-full p-1 text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light hover:-translate-y-px focus-visible:-translate-y-px"
+                                className="cursor-pointer transition-all rounded-full p-1 text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light hover:scale-110 focus-visible:scale-110"
                             >
                                 <LuCheck size={20} />
                             </button>
@@ -473,7 +473,7 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
                                     onClick={startEdit}
                                     aria-label="Edit"
                                     title="Edit"
-                                    className="cursor-pointer transition-all rounded-full p-1 text-text-muted btn-matte hover:text-text focus-visible:text-text hover:-translate-y-px focus-visible:-translate-y-px"
+                                    className="cursor-pointer transition-all rounded-full p-1 text-text-muted btn-matte hover:text-text focus-visible:text-text hover:scale-110 focus-visible:scale-110"
                                 >
                                     <LuPencil size={18} />
                                 </button>
@@ -483,7 +483,7 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
                                         onClick={copyTextContent}
                                         aria-label="Copy"
                                         title="Copy"
-                                        className="cursor-pointer transition-all rounded-full p-1 text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light hover:-translate-y-px focus-visible:-translate-y-px"
+                                        className="cursor-pointer transition-all rounded-full p-1 text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light hover:scale-110 focus-visible:scale-110"
                                     >
                                         {copied
                                             ? <LuCheck size={20} className="text-accent-light animate-copied" />
@@ -495,7 +495,7 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
                                         onClick={() => download(transfer.id)}
                                         aria-label="Download"
                                         title="Download"
-                                        className="cursor-pointer transition-all rounded-full p-1 text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light hover:-translate-y-px focus-visible:-translate-y-px"
+                                        className="cursor-pointer transition-all rounded-full p-1 text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light hover:scale-110 focus-visible:scale-110"
                                     >
                                         <LuDownload size={20} />
                                     </button>
@@ -507,7 +507,7 @@ export default function PreviewModal({ transfer, onClose, startInEdit = false, a
                             onClick={dismiss}
                             aria-label="Close"
                             title="Close"
-                            className="cursor-pointer transition-all rounded-full p-1 text-red-400 btn-matte btn-matte-red hover:text-red-300 focus-visible:text-red-300"
+                            className="cursor-pointer transition-all rounded-full p-1 text-red-400 btn-matte btn-matte-red hover:text-red-300 focus-visible:text-red-300 hover:scale-110 focus-visible:scale-110"
                         >
                             <LuX size={20} />
                         </button>

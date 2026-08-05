@@ -61,7 +61,7 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
                 <div className="relative inline-flex items-center">
                     <button
                         onClick={() => fetch()}
-                        className={`cursor-pointer transition-all rounded-full btn-matte p-1 hover:-translate-y-px focus-visible:-translate-y-px ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
+                        className={`cursor-pointer transition-all rounded-full btn-matte p-1 hover:scale-110 focus-visible:scale-110 ${loading ? 'opacity-90' : 'opacity-60 hover:opacity-90'}`}
                         title="Refresh"
                     >
                         <LogoSpinner

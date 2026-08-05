@@ -37,7 +37,7 @@ export default function GroupButton() {
         <div ref={wrapRef} className="relative inline-flex">
             <button
                 onClick={() => setOpen(o => !o)}
-                className="ml-1 text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light transition-all rounded-full p-1 cursor-pointer hover:-translate-y-px focus-visible:-translate-y-px"
+                className="ml-1 text-accent btn-matte btn-matte-active hover:text-accent-light focus-visible:text-accent-light transition-all rounded-full p-1 cursor-pointer hover:scale-110 focus-visible:scale-110"
                 title="Group colours"
             >
                 <LuPalette size={20} />

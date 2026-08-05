@@ -11,7 +11,7 @@ export default function LogoutButton() {
     return (
         <button
             onClick={handleLogout}
-            className="p-1 hover-glow logout-glow transition-all rounded-lg cursor-pointer hover:-translate-x-px hover:-translate-y-px focus-visible:-translate-x-px focus-visible:-translate-y-px"
+            className="p-1 hover-glow logout-glow transition-all rounded-lg cursor-pointer hover:scale-110 focus-visible:scale-110"
             style={{ color: 'var(--color-danger-dark)', outlineColor: 'color-mix(in srgb, var(--color-danger) 60%, transparent)' }}
             title="Log out"
         >

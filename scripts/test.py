@@ -11,9 +11,25 @@ from .utils import (
     get_venv_python, get_npm_cmd, fix_cmd, playwright_browsers_installed,
     run, wait_for_service,
 )
+from termcolor import colored
 
 
 e2e_processes: list[subprocess.Popen] = []
+
+
+def print_usage() -> None:
+    """Print a help message for this script."""
+    print(colored("Shelf-test options\n", attrs=["bold"]))
+    options = [
+        ("shelf-test", "Run all tests (api + frontend + e2e)"),
+        ("shelf-test api", "Run api unit tests only"),
+        ("shelf-test frontend", "Run frontend unit tests only"),
+        ("shelf-test unit", "Run api and frontend unit tests together"),
+        ("shelf-test e2e", "Run end-to-end tests only; passes additional --flags to playwright"),
+        ("shelf-test e2e --headed", "Run end-to-end tests in headed mode")
+    ]
+    for cmd, desc in options:
+        print(f"  {colored(cmd, 'green'):33s} {desc}")
 
 
 def test_api_unit() -> bool:
@@ -174,12 +190,20 @@ def main() -> None:
     commands = [a for a in args if not a.startswith("-")]
     extra_args = [a for a in args if a.startswith("-")]
 
-    run_unit = not commands or "unit" in commands
-    run_e2e = not commands or "e2e" in commands
+    if not commands:
+        run_api, run_frontend, run_e2e = (True, True, True)
+    else:
+        if "help" in commands:
+            print_usage()
+            sys.exit(0)
+        run_api = "unit" in commands or "api" in commands
+        run_frontend = "unit" in commands or "frontend" in commands
+        run_e2e = "e2e" in commands
 
     suites = []
-    if run_unit:
+    if run_api:
         suites.append((LABELS["api"], "UNIT", test_api_unit))
+    if run_frontend:
         suites.append((LABELS["frontend"], "UNIT", test_frontend_unit))
     if run_e2e:
         suites.append(("E2E", "E2E", lambda: test_e2e(extra_args)))

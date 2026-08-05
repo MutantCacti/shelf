@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shelf-scripts"
-version = "1.4"  # installed locally only
+version = "1.5"  # installed locally only
 description = "Cross-platform development scripts for Shelf"
 requires-python = ">=3.12"
 dependencies = [

@@ -11,6 +11,7 @@ const imageTransfer: Transfer = {
     content: 'photo.jpg',
     created_at: '2026-01-01T00:00:00Z',
     size: 5000,
+    group: null,
 }
 
 const archiveTransfer: Transfer = {
@@ -19,6 +20,7 @@ const archiveTransfer: Transfer = {
     content: 'archive.zip',
     created_at: '2026-01-01T00:00:00Z',
     size: 2048,
+    group: null,
 }
 
 const textTransfer: Transfer = {
@@ -27,6 +29,7 @@ const textTransfer: Transfer = {
     content: 'first line\nsecond line',
     created_at: '2026-01-01T00:00:00Z',
     size: null,
+    group: null,
 }
 
 const pdfTransfer: Transfer = {
@@ -35,6 +38,7 @@ const pdfTransfer: Transfer = {
     content: 'doc.pdf',
     created_at: '2026-01-01T00:00:00Z',
     size: 10000,
+    group: null,
 }
 
 describe('PreviewModal', () => {

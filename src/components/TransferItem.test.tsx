@@ -11,6 +11,7 @@ const textTransfer: Transfer = {
     content: 'Hello world',
     created_at: '2025-01-01T00:00:00Z',
     size: null,
+    group: null,
 }
 
 const fileTransfer: Transfer = {
@@ -19,6 +20,7 @@ const fileTransfer: Transfer = {
     content: 'report.pdf',
     created_at: '2025-01-01T00:00:00Z',
     size: 1024,
+    group: null,
 }
 
 const imageTransfer: Transfer = {
@@ -27,6 +29,7 @@ const imageTransfer: Transfer = {
     content: 'photo.jpg',
     created_at: '2025-06-15T12:00:00Z',
     size: 5000,
+    group: null,
 }
 
 const nonImageFile: Transfer = {
@@ -35,6 +38,7 @@ const nonImageFile: Transfer = {
     content: 'archive.zip',
     created_at: '2025-01-01T00:00:00Z',
     size: 2048,
+    group: null,
 }
 
 function resetStore() {
@@ -153,6 +157,20 @@ describe('TransferItem', () => {
         const { container } = render(<TransferItem transfer={textTransfer} />)
         const wrapper = container.querySelector('.glow-wrap')!
         expect(wrapper.classList.contains('active')).toBe(false)
+    })
+
+    it('shows group tint with the group colour variable when grouped', () => {
+        const grouped: Transfer = { ...textTransfer, group: 4 }
+        const { container } = render(<TransferItem transfer={grouped} />)
+        const wrapper = container.querySelector('.glow-wrap') as HTMLElement
+        expect(wrapper.classList.contains('group-tinted')).toBe(true)
+        expect(wrapper.style.getPropertyValue('--group-color')).toBe('var(--color-group-4)')
+    })
+
+    it('no group tint when ungrouped', () => {
+        const { container } = render(<TransferItem transfer={textTransfer} />)
+        const wrapper = container.querySelector('.glow-wrap') as HTMLElement
+        expect(wrapper.classList.contains('group-tinted')).toBe(false)
     })
 
 

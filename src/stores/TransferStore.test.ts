@@ -7,6 +7,7 @@ const transfer = (overrides = {}) => ({
     content: 'hello',
     created_at: '2025-01-01T00:00:00Z',
     size: null,
+    group: null,
     ...overrides,
 })
 
@@ -71,15 +72,15 @@ describe('TransferStore', () => {
             expect(s.error).toBeNull()
         })
 
-        it('clears selected on fetch', async () => {
+        it('prunes stale ids from selection but keeps live ones', async () => {
             useTransferStore.setState({ selected: [1, 2, 3] })
             globalThis.fetch = mockFetch({
-                '/api/transfers/': { ok: true, body: [] },
+                '/api/transfers/': { ok: true, body: [transfer({ id: 2 })] },
                 '/usage': { ok: true, body: usage },
             })
 
             await useTransferStore.getState().fetch()
-            expect(useTransferStore.getState().selected).toEqual([])
+            expect(useTransferStore.getState().selected).toEqual([2])
         })
 
         it('sets error on failure', async () => {
@@ -280,6 +281,74 @@ describe('TransferStore', () => {
     })
 
     // selection
+
+    describe('applyGroup', () => {
+        it('optimistically sets the group and POSTs batch-group', async () => {
+            useTransferStore.setState({ transfers: [transfer({ id: 1 }), transfer({ id: 2 })] })
+            const fetchMock = mockFetch({
+                '/batch-group': { ok: true },
+                '/usage': { ok: true, body: usage },
+            })
+            globalThis.fetch = fetchMock
+
+            const promise = useTransferStore.getState().applyGroup([1], 3)
+            expect(useTransferStore.getState().transfers.find(t => t.id === 1)?.group).toBe(3)
+            await promise
+
+            const call = fetchMock.mock.calls.find(([url]) => url.includes('/batch-group'))!
+            expect(JSON.parse(call[1]!.body as string)).toEqual({ ids: [1], group: 3 })
+            expect(useTransferStore.getState().transfers.find(t => t.id === 2)?.group).toBeNull()
+        })
+
+        it('toggles to clear when every target already has the group', async () => {
+            useTransferStore.setState({
+                transfers: [transfer({ id: 1, group: 3 }), transfer({ id: 2, group: 3 })],
+            })
+            const fetchMock = mockFetch({
+                '/batch-group': { ok: true },
+                '/usage': { ok: true, body: usage },
+            })
+            globalThis.fetch = fetchMock
+
+            await useTransferStore.getState().applyGroup([1, 2], 3)
+
+            const call = fetchMock.mock.calls.find(([url]) => url.includes('/batch-group'))!
+            expect(JSON.parse(call[1]!.body as string)).toEqual({ ids: [1, 2], group: null })
+            expect(useTransferStore.getState().transfers.every(t => t.group === null)).toBe(true)
+        })
+
+        it('does not toggle when only some targets have the group', async () => {
+            useTransferStore.setState({
+                transfers: [transfer({ id: 1, group: 3 }), transfer({ id: 2 })],
+            })
+            const fetchMock = mockFetch({
+                '/batch-group': { ok: true },
+                '/usage': { ok: true, body: usage },
+            })
+            globalThis.fetch = fetchMock
+
+            await useTransferStore.getState().applyGroup([1, 2], 3)
+
+            const call = fetchMock.mock.calls.find(([url]) => url.includes('/batch-group'))!
+            expect(JSON.parse(call[1]!.body as string)).toEqual({ ids: [1, 2], group: 3 })
+        })
+
+        it('re-fetches on error', async () => {
+            const serverState = [transfer({ id: 1, group: null })]
+            useTransferStore.setState({ transfers: serverState })
+            globalThis.fetch = mockFetch({
+                '/batch-group': { ok: false, body: 'Grouping failed' },
+                '/api/transfers/': { ok: true, body: serverState },
+                '/usage': { ok: true, body: usage },
+            })
+
+            await useTransferStore.getState().applyGroup([1], 5)
+            const s = useTransferStore.getState()
+
+            expect(s.error).toBe('Grouping failed')
+            expect(s.transfers.find(t => t.id === 1)?.group).toBeNull()
+        })
+    })
 
     describe('selection', () => {
         it('toggleSelect adds and removes IDs', () => {

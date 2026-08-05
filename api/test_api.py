@@ -342,6 +342,80 @@ def test_rename_transfer(auth_client):
     assert resp.json()["content"] == "renamed"
 
 
+def test_batch_group_assign_and_clear(auth_client):
+    ids = []
+    for i in range(3):
+        resp = auth_client.post("/transfers/", json={"type": "text", "content": f"item {i}"})
+        assert resp.json()["group"] is None
+        ids.append(resp.json()["id"])
+
+    resp = auth_client.post("/transfers/batch-group", json={"ids": ids[:2], "group": 3})
+    assert resp.status_code == 204
+
+    groups = {t["id"]: t["group"] for t in auth_client.get("/transfers/").json()}
+    assert groups[ids[0]] == 3
+    assert groups[ids[1]] == 3
+    assert groups[ids[2]] is None
+
+    resp = auth_client.post("/transfers/batch-group", json={"ids": ids[:1], "group": None})
+    assert resp.status_code == 204
+    groups = {t["id"]: t["group"] for t in auth_client.get("/transfers/").json()}
+    assert groups[ids[0]] is None
+    assert groups[ids[1]] == 3
+
+
+@pytest.mark.parametrize("group", [0, 11, -1])
+def test_batch_group_rejects_out_of_range(auth_client, group):
+    resp = auth_client.post("/transfers/", json={"type": "text", "content": "item"})
+    transfer_id = resp.json()["id"]
+
+    resp = auth_client.post("/transfers/batch-group", json={"ids": [transfer_id], "group": group})
+    assert resp.status_code == 400
+
+
+def test_batch_group_isolated_between_users(client):
+    _create_user(client._session_factory, TEST_PASSWORD)
+    _create_user(client._session_factory, TEST_PASSWORD_B)
+
+    client.post("/auth/login", json={"password": TEST_PASSWORD})
+    resp = client.post("/transfers/", json={"type": "text", "content": "A's item"})
+    a_id = resp.json()["id"]
+
+    client.post("/auth/logout")
+    client.post("/auth/login", json={"password": TEST_PASSWORD_B})
+
+    # User B grouping User A's transfer is a silent no-op
+    resp = client.post("/transfers/batch-group", json={"ids": [a_id], "group": 5})
+    assert resp.status_code == 204
+
+    client.post("/auth/logout")
+    client.post("/auth/login", json={"password": TEST_PASSWORD})
+    assert client.get("/transfers/").json()[0]["group"] is None
+
+
+def test_migrate_db_adds_group_column(tmp_path):
+    from sqlalchemy import create_engine as ce
+    from db import migrate_db
+
+    eng = ce(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with eng.begin() as conn:
+        conn.exec_driver_sql(
+            "CREATE TABLE transfers (id INTEGER PRIMARY KEY, user_id INTEGER, "
+            "type VARCHAR(10), content TEXT, created_at DATETIME)"
+        )
+
+    migrate_db(eng)
+    with eng.connect() as conn:
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(transfers)")}
+    assert "group" in cols
+
+    # Idempotent on a migrated database
+    migrate_db(eng)
+    with eng.connect() as conn:
+        cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(transfers)")]
+    assert cols.count("group") == 1
+
+
 def test_multi_user_isolation(client):
     """User A cannot see, download, delete, or rename User B's transfers."""
     _create_user(client._session_factory, TEST_PASSWORD)

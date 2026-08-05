@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useState, useCallback, useMemo, useRef } fr
 import useTransferStore from '../stores/TransferStore'
 import TransferItem from './TransferItem'
 import TransferBar from './TransferBar'
+import { byGroupThenCreated } from '../lib/groups'
 const MAX_ITEM = 140
 const GAP = 16
 const MIN_ITEM = 56
@@ -95,6 +96,9 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
 
     const aspect = containerSize.w && containerSize.h ? containerSize.w / containerSize.h : 1
 
+    // Reading order (left to right, top to bottom): grouped clusters first, then ungrouped.
+    const sorted = useMemo(() => [...transfers].sort(byGroupThenCreated), [transfers])
+
     const positions = useMemo(
         () => gridFill(transfers.length, aspect),
         [transfers.length, aspect],
@@ -127,17 +131,17 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
         const lh = Math.abs(l.currentY - l.startY)
 
         const hit: number[] = []
-        for (let i = 0; i < transfers.length; i++) {
+        for (let i = 0; i < sorted.length; i++) {
             const [gx, gy] = positions[i]
             const ix = cx + gx * cell - cell / 2
             const iy = cy + gy * cell - cell / 2 + BAR_OFFSET
             if (rectsIntersect(lx, ly, lw, lh, ix, iy, itemSize, itemSize)) {
-                hit.push(transfers[i].id)
+                hit.push(sorted[i].id)
             }
         }
         const merged = [...new Set([...preLassoSelection.current, ...hit])]
         useTransferStore.setState({ selected: merged })
-    }, [transfers, positions, cell, itemSize])
+    }, [sorted, positions, cell, itemSize])
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if ((e.target as HTMLElement).closest('button, input')) return
@@ -253,7 +257,7 @@ export default function TransferGrid({ onHelp, onDelete }: { onHelp: () => void;
                     />
                     <TransferBar onHelp={onHelp} onDelete={onDelete} />
                 </div>
-                {transfers.map((t, i) => {
+                {sorted.map((t, i) => {
                     const [gx, gy] = positions[i]
                     return (
                         <div

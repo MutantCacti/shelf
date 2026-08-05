@@ -18,7 +18,7 @@ from config import TRANSFERS_DIR, THUMBS_DIR
 from db import SessionLocal
 from models import Transfer
 from routes.auth import require_auth
-from schemas import BatchDeleteRequest, TransferCreate, TransferRename, TransferResponse
+from schemas import BatchDeleteRequest, BatchGroupRequest, TransferCreate, TransferRename, TransferResponse
 
 MAX_FILE_SIZE = 1024 * 1024 * 1024  # 1GB per file
 MAX_USER_STORAGE = 1024 * 1024 * 1024  # 1GB total per user
@@ -83,6 +83,7 @@ def transfer_to_response(t: Transfer) -> TransferResponse:
         content=t.content,
         created_at=t.created_at,
         size=size,
+        group=t.group,
     )
 
 
@@ -244,6 +245,26 @@ async def batch_delete_transfers(
                 os.remove(path)
             except OSError:
                 pass
+    finally:
+        db.close()
+
+
+@post("/batch-group", status_code=204)
+async def batch_group_transfers(
+    data: BatchGroupRequest,
+    request: Request[Any, Any, Any],
+) -> None:
+    """Assign (or clear, with group=null) the colour group of multiple transfers."""
+    user_id = require_auth(request)
+
+    db = SessionLocal()
+    try:
+        transfers = db.query(Transfer).filter(
+            Transfer.id.in_(data.ids), Transfer.user_id == user_id
+        ).all()
+        for transfer in transfers:
+            transfer.group = data.group
+        db.commit()
     finally:
         db.close()
 
@@ -483,7 +504,7 @@ async def storage_usage(
 
 transfers_router = Router(path="/transfers", route_handlers=[
     create_text_transfer, create_file_transfer, list_transfers,
-    rename_transfer, delete_transfer, batch_delete_transfers,
+    rename_transfer, delete_transfer, batch_delete_transfers, batch_group_transfers,
     batch_download_transfers, download_transfer, thumbnail_transfer,
     storage_usage,
 ])

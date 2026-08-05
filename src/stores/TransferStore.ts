@@ -21,6 +21,7 @@ interface TransferStore {
     download: (id: number) => void
     batchDownload: (ids: number[]) => void
     rename: (id: number, newContent: string) => Promise<void>
+    applyGroup: (ids: number[], group: number | null) => Promise<void>
     toggleSelect: (id: number) => void
     clearSelection: () => void
 }
@@ -94,11 +95,15 @@ const useTransferStore = create<TransferStore>((set, get) => ({
 
     async fetch() {
         inflightUp(set, 'Loading')
-        set({ selected: [] })
         try {
             const res = await api('/')
             const transfers: Transfer[] = await res.json()
-            set({ transfers })
+            // Prune rather than clear the selection: background refetches
+            // (SSE pings, error recovery) must not wipe an in-progress selection.
+            set({
+                transfers,
+                selected: get().selected.filter(id => transfers.some(t => t.id === id)),
+            })
         } catch (e: any) {
             set({ error: e.message })
         } finally {
@@ -256,6 +261,35 @@ const useTransferStore = create<TransferStore>((set, get) => ({
         } catch (e: any) {
             set({ error: e.message })
             if (prev) set({ transfers: get().transfers.map(t => t.id === id ? prev : t) })
+        } finally {
+            inflightDown(set, get)
+        }
+    },
+
+    async applyGroup(ids: number[], group: number | null) {
+        // Toggle: assigning a group every target already has clears it instead.
+        if (group !== null) {
+            const targets = get().transfers.filter(t => ids.includes(t.id))
+            if (targets.length > 0 && targets.every(t => t.group === group)) group = null
+        }
+
+        inflightUp(set, 'Grouping')
+        const idSet = new Set(ids)
+        set({ transfers: get().transfers.map(t => idSet.has(t.id) ? { ...t, group } : t) })
+
+        try {
+            await api('/batch-group', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids, group }),
+            })
+        } catch (e: any) {
+            // Re-fetch from server instead of restoring stale snapshot
+            set({ error: e.message })
+            try {
+                const res = await api('/')
+                set({ transfers: await res.json() })
+            } catch { /* fetch error already surfaced */ }
         } finally {
             inflightDown(set, get)
         }

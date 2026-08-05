@@ -4,4 +4,5 @@ export interface Transfer {
     content: string
     created_at: string
     size: number | null
+    group: number | null
 }

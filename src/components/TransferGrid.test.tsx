@@ -46,6 +46,22 @@ describe('TransferGrid', () => {
         expect(screen.getByText('photo.jpg')).toBeInTheDocument()
     })
 
+    it('renders grouped items before ungrouped in reading order', () => {
+        resetStore({
+            transfers: [
+                { id: 1, type: 'text', content: 'ungrouped', created_at: '2025-03-01T00:00:00Z', size: null, group: null },
+                { id: 2, type: 'text', content: 'group two', created_at: '2025-01-01T00:00:00Z', size: null, group: 2 },
+                { id: 3, type: 'text', content: 'group one', created_at: '2025-02-01T00:00:00Z', size: null, group: 1 },
+            ],
+        })
+
+        const { container } = render(<TransferGrid onHelp={vi.fn()} onDelete={vi.fn()} />)
+        const order = [...container.querySelectorAll('[data-transfer-id]')]
+            .map(el => Number(el.getAttribute('data-transfer-id')))
+
+        expect(order).toEqual([3, 2, 1])
+    })
+
     it('renders no items when transfers is empty', () => {
         resetStore({ transfers: [] })
         render(<TransferGrid onHelp={vi.fn()} onDelete={vi.fn()} />)

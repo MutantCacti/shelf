@@ -4,6 +4,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import PreviewModal from '../components/PreviewModal'
 import useTransferStore from '../stores/TransferStore'
 import useAuthStore from '../stores/AuthStore'
+import { keyToGroup } from '../lib/groups'
 import ToastContainer from '../components/Toast'
 
 type Anchor = { x: number, y: number }
@@ -141,6 +142,16 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
                 window.dispatchEvent(new CustomEvent('shelf:rename', { detail: selected[0] }))
             }
             return
+        }
+        // Number keys colour-group the selection (1-9 -> groups 1-9, 0 -> group 10)
+        if (/^[0-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey
+            && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+            const { selected, applyGroup } = useTransferStore.getState()
+            if (selected.length > 0) {
+                e.preventDefault()
+                applyGroup(selected, keyToGroup(e.key))
+                return
+            }
         }
         // Redirect printable keystrokes to text input
         if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {

@@ -3,6 +3,7 @@ import TextInput from './TextInput'
 import SendButton from './SendButton'
 import PasteButton from './PasteButton'
 import UploadButton from './UploadButton'
+import GroupButton from './GroupButton'
 import DownloadButton from './DownloadButton'
 import DeleteButton from './DeleteButton'
 import LogoutButton from './LogoutButton'
@@ -53,7 +54,7 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
                     )}
                     <TextInput />
                     <SendButton />
-                    <UploadButton />
+                    {selected.length > 0 ? <GroupButton /> : <UploadButton />}
                     <DownloadButton />
                     <DeleteButton onDelete={onDelete} />
                 </div>
@@ -97,7 +98,7 @@ export default function TransferBar({ onHelp, onDelete }: { onHelp: () => void; 
                     <LogoutButton />
                     <InfoButton onClick={onHelp} />
                     <PasteButton />
-                    <UploadButton />
+                    {selected.length > 0 ? <GroupButton /> : <UploadButton />}
                     <DownloadButton />
                     <DeleteButton onDelete={onDelete} />
                 </div>

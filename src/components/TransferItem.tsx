@@ -6,6 +6,7 @@ import {
 } from 'react-icons/lu'
 import { Transfer } from '../types/types'
 import useTransferStore from '../stores/TransferStore'
+import { groupColor } from '../lib/groups'
 
 const RADIUS = '8px'
 
@@ -227,8 +228,12 @@ export default function TransferItem({ transfer, size = 100 }: TransferItemProps
     }
 
     return (
-        <div className={`glow-wrap${isSelected ? ' active' : ''}`} data-transfer-id={transfer.id}
-             style={{ borderRadius: RADIUS }}
+        <div className={`glow-wrap${isSelected ? ' active' : ''}${transfer.group != null ? ' group-tinted' : ''}`}
+             data-transfer-id={transfer.id}
+             style={{
+                 borderRadius: RADIUS,
+                 ...(transfer.group != null && { '--group-color': groupColor(transfer.group) } as React.CSSProperties),
+             }}
              title={transfer.type === 'file' ? transfer.content : undefined}
              draggable
              onDragStart={handleDragStart}

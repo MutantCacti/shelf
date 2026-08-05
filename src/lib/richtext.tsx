@@ -49,7 +49,7 @@ export function RichText({ content }: { content: string }) {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
-                            className="text-accent-light underline decoration-accent-light/50 hover:text-highlight hover:decoration-highlight focus-visible:text-highlight"
+                            className="text-link underline decoration-link/50 hover:text-highlight hover:decoration-highlight focus-visible:text-highlight"
                         >
                             {token.value}
                         </a>

@@ -51,13 +51,16 @@
     --color-secondary: #d9b435;
     --color-secondary-light: #e3c75e;
     --color-highlight: #6ab0de;
+    /* Resting link blue; readable on every group tint (highlight stays the
+       hover/focus colour) */
+    --color-link: #7cb8ff;
 
-    /* "Slate" ground: cool blue-leaning neutrals under the green accent */
-    --color-bg: #0c1016;
-    --color-surface: #151b23;
-    --color-border: #2c3440;
-    --color-text: #e3e9ef;
-    --color-text-muted: #8a94a3;
+    /* "Slate" ground: cool neutrals under the green accent, only a hint of blue */
+    --color-bg: #0d1013;
+    --color-surface: #161b20;
+    --color-border: #2f343c;
+    --color-text: #e5e9ed;
+    --color-text-muted: #8d949e;
 
     /* Colour groups 1-9; every 30% tint on --color-surface keeps >= 4.5:1
        contrast with --color-text, --color-secondary and --color-link */

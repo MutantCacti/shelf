@@ -4,6 +4,8 @@
 
 - Do a full code comment and hygiene pass
 
+- Do a pass of HelpPage to ensure text is readable (copyright currently really is not)
+
 ## Next Major Versions
 
 - 2.0 Mobile-forward and Accessibility redesign

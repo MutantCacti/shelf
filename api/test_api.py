@@ -342,6 +342,55 @@ def test_rename_transfer(auth_client):
     assert resp.json()["content"] == "renamed"
 
 
+def test_events_registry_notify_and_exclude():
+    import events
+
+    a = events.subscribe(1, "client-a")
+    b = events.subscribe(1, "client-b")
+    other = events.subscribe(2, "client-c")
+    try:
+        events.notify(1, exclude_client_id="client-a")
+        assert a[0].empty()
+        assert b[0].get_nowait() == "changed"
+        assert other[0].empty()
+
+        events.notify(1)
+        assert a[0].get_nowait() == "changed"
+        assert b[0].get_nowait() == "changed"
+    finally:
+        events.unsubscribe(1, a)
+        events.unsubscribe(1, b)
+        events.unsubscribe(2, other)
+
+    # Unsubscribed queues no longer receive pings
+    events.notify(1)
+    assert a[0].empty() and b[0].empty()
+
+
+def test_mutations_notify_other_clients(auth_client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "routes.transfers.notify",
+        lambda user_id, exclude_client_id=None: calls.append((user_id, exclude_client_id)),
+    )
+
+    headers = {"X-Shelf-Client": "tab-1"}
+    resp = auth_client.post(
+        "/transfers/", json={"type": "text", "content": "ping me"}, headers=headers
+    )
+    transfer_id = resp.json()["id"]
+    auth_client.patch(f"/transfers/{transfer_id}", json={"content": "renamed"}, headers=headers)
+    auth_client.post("/transfers/batch-group", json={"ids": [transfer_id], "group": 1}, headers=headers)
+    auth_client.post("/transfers/batch-delete", json={"ids": [transfer_id]}, headers=headers)
+
+    assert len(calls) == 4
+    assert all(c == (calls[0][0], "tab-1") for c in calls)
+
+    # Without the header the exclusion is simply absent
+    auth_client.post("/transfers/", json={"type": "text", "content": "anon tab"})
+    assert calls[-1][1] is None
+
+
 def test_upload_post_write_quota_recheck(auth_client, monkeypatch):
     """Concurrent uploads can pass the snapshotted per-chunk check together;
     the post-write recheck against real disk usage must catch the overshoot."""

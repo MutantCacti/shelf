@@ -5,6 +5,7 @@ import PreviewModal from '../components/PreviewModal'
 import useTransferStore from '../stores/TransferStore'
 import useAuthStore from '../stores/AuthStore'
 import { keyToGroup } from '../lib/groups'
+import { connectEvents } from '../lib/sse'
 import ToastContainer from '../components/Toast'
 
 type Anchor = { x: number, y: number }
@@ -168,6 +169,16 @@ export default function TransferPage({ onHelp }: { onHelp: () => void }) {
             window.removeEventListener('paste', handlePaste)
         }
     }, [handleKeyDown, handlePaste])
+
+    // Live refresh: other devices' mutations ping this tab, which refetches.
+    // TransferPage unmounts on logout, closing the stream.
+    useEffect(() => {
+        const conn = connectEvents({
+            url: '/api/transfers/events',
+            onPing: () => useTransferStore.getState().fetch(),
+        })
+        return () => conn.close()
+    }, [])
 
     useEffect(() => {
         function onPreview(e: Event) {

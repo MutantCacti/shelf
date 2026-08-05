@@ -1,8 +1,9 @@
+import asyncio
 import io
 import mimetypes
 import os
 import zipfile
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from PIL import Image, ImageOps
 
@@ -12,10 +13,11 @@ from litestar.datastructures.headers import CacheControlHeader
 from litestar.enums import RequestEncodingType
 from litestar.exceptions import NotFoundException, ClientException
 from litestar.params import Body
-from litestar.response import File, Response, Stream
+from litestar.response import File, Response, ServerSentEvent, ServerSentEventMessage, Stream
 
 from config import TRANSFERS_DIR, THUMBS_DIR
 from db import SessionLocal
+from events import notify, subscribe, unsubscribe
 from models import Transfer
 from routes.auth import require_auth
 from schemas import BatchDeleteRequest, BatchGroupRequest, TransferCreate, TransferRename, TransferResponse
@@ -87,6 +89,38 @@ def transfer_to_response(t: Transfer) -> TransferResponse:
     )
 
 
+HEARTBEAT_SECONDS = 25
+
+
+def _notify_change(request: Request[Any, Any, Any], user_id: int) -> None:
+    """Ping the user's other clients; the sender identifies itself by header."""
+    notify(user_id, exclude_client_id=request.headers.get("X-Shelf-Client"))
+
+
+@get("/events")
+async def transfer_events(request: Request[Any, Any, Any]) -> ServerSentEvent:
+    """SSE stream emitting a bare 'changed' ping whenever transfers mutate."""
+    user_id = require_auth(request)
+    client_id = request.query_params.get("client_id")
+
+    async def stream() -> AsyncGenerator[ServerSentEventMessage, None]:
+        entry = subscribe(user_id, client_id)
+        queue = entry[0]
+        try:
+            while True:
+                try:
+                    msg = await asyncio.wait_for(queue.get(), timeout=HEARTBEAT_SECONDS)
+                    yield ServerSentEventMessage(data=msg)
+                except TimeoutError:
+                    # Heartbeat comment keeps proxies open and surfaces dead
+                    # connections so the generator gets cancelled.
+                    yield ServerSentEventMessage(comment="keep-alive")
+        finally:
+            unsubscribe(user_id, entry)
+
+    return ServerSentEvent(stream(), headers={"Cache-Control": "no-store"})
+
+
 @post("/")
 async def create_text_transfer(
     data: TransferCreate,
@@ -108,6 +142,7 @@ async def create_text_transfer(
         db.commit()
         db.refresh(transfer)
 
+        _notify_change(request, user_id)
         return transfer_to_response(transfer)
     finally:
         db.close()
@@ -162,6 +197,7 @@ async def create_file_transfer(
 
         generate_thumbnail(transfer.id, user_id, file_path, original_filename)
 
+        _notify_change(request, user_id)
         return transfer_to_response(transfer)
     finally:
         db.close()
@@ -218,6 +254,8 @@ async def delete_transfer(
                 os.remove(path)
             except OSError:
                 pass
+
+        _notify_change(request, user_id)
     finally:
         db.close()
 
@@ -251,6 +289,8 @@ async def batch_delete_transfers(
                 os.remove(path)
             except OSError:
                 pass
+
+        _notify_change(request, user_id)
     finally:
         db.close()
 
@@ -271,6 +311,8 @@ async def batch_group_transfers(
         for transfer in transfers:
             transfer.group = data.group
         db.commit()
+
+        _notify_change(request, user_id)
     finally:
         db.close()
 
@@ -488,6 +530,7 @@ async def rename_transfer(
         transfer.content = data.content
         db.commit()
         db.refresh(transfer)
+        _notify_change(request, user_id)
         return transfer_to_response(transfer)
     finally:
         db.close()
@@ -512,5 +555,5 @@ transfers_router = Router(path="/transfers", route_handlers=[
     create_text_transfer, create_file_transfer, list_transfers,
     rename_transfer, delete_transfer, batch_delete_transfers, batch_group_transfers,
     batch_download_transfers, download_transfer, thumbnail_transfer,
-    storage_usage,
+    storage_usage, transfer_events,
 ])

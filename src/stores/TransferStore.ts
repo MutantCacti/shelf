@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Transfer } from '../types/types'
+import { CLIENT_ID } from '../lib/sse'
 
 const API = '/api/transfers'
 
@@ -30,6 +31,8 @@ async function api(path: string, init?: RequestInit) {
     const res = await fetch(`${API}${path}`, {
         credentials: 'include',
         ...init,
+        // Identify this tab so SSE pings for its own mutations are skipped
+        headers: { 'X-Shelf-Client': CLIENT_ID, ...init?.headers },
     })
     if (!res.ok) {
         const body = await res.text()

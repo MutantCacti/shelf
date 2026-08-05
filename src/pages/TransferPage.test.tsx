@@ -10,6 +10,12 @@ vi.mock('../components/LogoSpinner', () => ({
     ),
 }))
 
+// Keep the SSE reconnect loop out of jsdom tests
+vi.mock('../lib/sse', () => ({
+    CLIENT_ID: 'test-client',
+    connectEvents: vi.fn(() => ({ close: vi.fn() })),
+}))
+
 const textTransfer = { id: 1, type: 'text' as const, content: 'hello', created_at: '2026-01-01T00:00:00Z', size: null }
 
 function resetStore(overrides = {}) {

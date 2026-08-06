@@ -6,6 +6,12 @@
 
 - Do a pass of HelpPage to ensure text is readable (copyright currently really is not)
 
+- Single clicking a selected item should deselect it again (disabled by 1.5's clear-select mechanics)
+
+- Active bound item for shift+click range select should be cleared on deselection (BUG: select, deselect and shift+click still uses previously selected item as anchor)
+
+- Swap shift+Enter and Enter in preview edit so shifted=newline and raw=submit
+
 ## Next Major Versions
 
 - 2.0 Mobile-forward and Accessibility redesign

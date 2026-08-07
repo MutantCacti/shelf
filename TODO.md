@@ -12,6 +12,8 @@
 
 - Swap shift+Enter and Enter in preview edit so shifted=newline and raw=submit
 
+- BUG: Optimistic file uploads no longer correctly rolling back on failure. May need manual hash by client and check. 
+
 ## Next Major Versions
 
 - 2.0 Mobile-forward and Accessibility redesign

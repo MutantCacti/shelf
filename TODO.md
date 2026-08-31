@@ -12,7 +12,21 @@
 
 - Swap shift+Enter and Enter in preview edit so shifted=newline and raw=submit
 
-- BUG: Optimistic file uploads no longer correctly rolling back on failure. May need manual hash by client and check. 
+- Hover should no longer tilt the item as this is just bad for pixels --- also the animation should be instant so that moving the mouse around quickly satisfyingly tracks its position
+
+- Background change when a file is hovered over the upload field needs improvement (needs movement!!)
+
+- File icons look chunky and unprofessional
+
+- Replace Google Sans Code with something less extra (I like Fira Code)
+
+- It looks weird that the logout and help buttons are floating to the left of the bar like that. Also the i circle icon isn't good
+
+- We seriously need to brainstorm new names than shelf that we can actually get domains for
+
+- BUG: Optimistic file uploads no longer correctly rolling back on failure. May need manual hash by client and check.
+
+- BUG: Preview doesn't preload image or text content and therefore flashes from a small unstretched container to the full one that's properly sized for the content
 
 ## Next Major Versions
 
